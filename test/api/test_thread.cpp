@@ -5,6 +5,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <thread>
 
 #include "framework/array.h"
@@ -13,6 +15,7 @@
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "thread_validation.h"
 
 // Tuple of width, height, thread count.
 typedef std::tuple<unsigned, unsigned, unsigned> P;
@@ -328,6 +331,135 @@ TEST_UNARY_OP(s8_to_f32, int8_t, float, 1, 1);
 TEST_UNARY_OP(u8_to_f32, uint8_t, float, 1, 1);
 TEST_UNARY_OP(in_range_u8, uint8_t, uint8_t, 1, 1, 1, 2);
 TEST_UNARY_OP(in_range_f32, float, uint8_t, 1, 1, 1, 2);
+
+namespace {
+
+using ThreadUnaryValidation = test::ThreadValidation;
+
+TEST_F(ThreadUnaryValidation, NullSourcesReturnBeforeScheduling) {
+  uint8_t dst_u8 = 0;
+  int8_t dst_s8 = 0;
+  float dst_f32 = 0.0F;
+  float16_t dst_f16 = 0.0F;
+
+#define EXPECT_NULL(call) expect_rejected(KLEIDICV_ERROR_NULL_POINTER, call)
+
+  EXPECT_NULL(kleidicv_thread_gray_to_rgb_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                             scheduler()));
+  EXPECT_NULL(kleidicv_thread_gray_to_rgba_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                              scheduler()));
+  EXPECT_NULL(
+      kleidicv_thread_rgb_to_bgr_u8(nullptr, 1, &dst_u8, 1, 1, 2, scheduler()));
+  EXPECT_NULL(
+      kleidicv_thread_rgb_to_rgb_u8(nullptr, 1, &dst_u8, 1, 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_rgba_to_bgra_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                              scheduler()));
+  EXPECT_NULL(kleidicv_thread_rgba_to_rgba_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                              scheduler()));
+  EXPECT_NULL(kleidicv_thread_rgb_to_bgra_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                             scheduler()));
+  EXPECT_NULL(kleidicv_thread_rgb_to_rgba_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                             scheduler()));
+  EXPECT_NULL(kleidicv_thread_rgba_to_bgr_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                             scheduler()));
+  EXPECT_NULL(kleidicv_thread_rgba_to_rgb_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                             scheduler()));
+  EXPECT_NULL(kleidicv_thread_exp_f32(nullptr, sizeof(float), &dst_f32,
+                                      sizeof(float), 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_f32_to_s8(nullptr, sizeof(float), &dst_s8, 1, 1,
+                                        2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_f32_to_u8(nullptr, sizeof(float), &dst_u8, 1, 1,
+                                        2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_s8_to_f32(nullptr, 1, &dst_f32, sizeof(float), 1,
+                                        2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_u8_to_f32(nullptr, 1, &dst_f32, sizeof(float), 1,
+                                        2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_in_range_u8(nullptr, 1, &dst_u8, 1, 1, 2, 0, 1,
+                                          scheduler()));
+  EXPECT_NULL(kleidicv_thread_in_range_f32(nullptr, sizeof(float), &dst_u8, 1,
+                                           1, 2, 0.0F, 1.0F, scheduler()));
+  EXPECT_NULL(kleidicv_thread_threshold_binary_u8(nullptr, 1, &dst_u8, 1, 1, 2,
+                                                  0, 1, scheduler()));
+  EXPECT_NULL(kleidicv_thread_scale_u8(nullptr, 1, &dst_u8, 1, 1, 2, 1.0, 0.0,
+                                       scheduler()));
+  EXPECT_NULL(kleidicv_thread_scale_f32(nullptr, sizeof(float), &dst_f32,
+                                        sizeof(float), 1, 2, 1.0, 0.0,
+                                        scheduler()));
+  EXPECT_NULL(kleidicv_thread_scale_u8_f16(
+      nullptr, 1, &dst_f16, sizeof(float16_t), 1, 2, 1.0, 0.0, scheduler()));
+
+#undef EXPECT_NULL
+}
+
+TEST_F(ThreadUnaryValidation, PointerAndAlignmentPrecedence) {
+  uint8_t src_u8 = 0;
+  float src_f32 = 0.0F;
+  float dst_f32 = 0.0F;
+  float16_t dst_f16 = 0.0F;
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_gray_to_rgb_u8(&src_u8, 1, nullptr, 1, 1, 2,
+                                                 scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_ALIGNMENT,
+      kleidicv_thread_exp_f32(&src_f32, 1, nullptr, 1, 1, 2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_exp_f32(&src_f32, sizeof(float), nullptr, 1,
+                                          1, 2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_exp_f32(&src_f32, sizeof(float), &dst_f32, 1,
+                                          1, 2, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_ALIGNMENT,
+      kleidicv_thread_f32_to_u8(&src_f32, 1, nullptr, 1, 1, 2, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_ALIGNMENT,
+      kleidicv_thread_u8_to_f32(&src_u8, 1, &dst_f32, 1, 1, 2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_scale_u8(&src_u8, 1, nullptr, 1, 1, 2, 1.0,
+                                           0.0, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_scale_u8_f16(&src_u8, 1, &dst_f16, 1, 1, 2,
+                                               1.0, 0.0, scheduler()));
+
+  expect_dispatched(2,
+                    kleidicv_thread_exp_f32(&src_f32, sizeof(float), &dst_f32,
+                                            sizeof(float), 1, 2, scheduler()));
+}
+
+TEST_F(ThreadUnaryValidation, FullImageSizeReturnsBeforeScheduling) {
+  uint8_t src_u8 = 0;
+  uint8_t dst_u8 = 0;
+  int8_t src_s8 = 0;
+  int8_t dst_s8 = 0;
+  float src_f32 = 0.0F;
+  float dst_f32 = 0.0F;
+  float16_t dst_f16 = 0.0F;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+#define EXPECT_RANGE(call) expect_rejected(KLEIDICV_ERROR_RANGE, call)
+
+  EXPECT_RANGE(kleidicv_thread_gray_to_rgb_u8(&src_u8, 1, &dst_u8, 1,
+                                              kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_exp_f32(&src_f32, sizeof(float), &dst_f32,
+                                       sizeof(float), kLargeWidth, 2,
+                                       scheduler()));
+  EXPECT_RANGE(kleidicv_thread_f32_to_s8(&src_f32, sizeof(float), &dst_s8, 1,
+                                         kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_f32_to_u8(&src_f32, sizeof(float), &dst_u8, 1,
+                                         kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_s8_to_f32(&src_s8, 1, &dst_f32, sizeof(float),
+                                         kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_u8_to_f32(&src_u8, 1, &dst_f32, sizeof(float),
+                                         kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_scale_u8_f16(&src_u8, 1, &dst_f16,
+                                            sizeof(float16_t), kLargeWidth, 2,
+                                            1.0, 0.0, scheduler()));
+
+#undef EXPECT_RANGE
+}
+
+}  // namespace
 
 TEST_BINARY_OP(saturating_add_s8, int8_t, 1, 1);
 TEST_BINARY_OP(saturating_add_u8, uint8_t, 1, 1);

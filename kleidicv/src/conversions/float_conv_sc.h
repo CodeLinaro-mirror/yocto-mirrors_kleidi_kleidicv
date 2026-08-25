@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/sve2.h"
 
 namespace KLEIDICV_TARGET_NAMESPACE {
@@ -219,9 +220,10 @@ static kleidicv_error_t float_conversion_sc(const InputType* src,
                                             size_t src_stride, OutputType* dst,
                                             size_t dst_stride, size_t width,
                                             size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   svuint8_t index;
   float_conversion_operation<InputType, OutputType> operation{index};

@@ -5,6 +5,7 @@
 #include "kleidicv/conversions/rgb_to_rgb.h"
 #include "kleidicv/dispatch.h"
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/types.h"
 
 #define KLEIDICV_DEFINE_C_API(name, partialname)           \
@@ -29,9 +30,10 @@ using KLEIDICV_TARGET_NAMESPACE::Rows;
 static kleidicv_error_t kleidicv_rgb_to_rgb_u8_impl(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 3 /* RGB */};
@@ -46,9 +48,10 @@ decltype(kleidicv_rgb_to_rgb_u8_impl) *kleidicv_rgb_to_rgb_u8 =
 static kleidicv_error_t kleidicv_rgba_to_rgba_u8_impl(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 4 /* RGBA */};

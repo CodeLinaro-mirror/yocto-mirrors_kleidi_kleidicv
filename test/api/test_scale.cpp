@@ -11,6 +11,7 @@
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/operation.h"
+#include "kleidicv/arithmetics/scale.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 
@@ -729,4 +730,23 @@ TYPED_TEST(ScaleTest, OversizeImage) {
             (scale_api<InputType, OutputType>()(
                 src, sizeof(InputType), dst, sizeof(OutputType),
                 KLEIDICV_MAX_IMAGE_PIXELS, KLEIDICV_MAX_IMAGE_PIXELS, 2, 0)));
+}
+
+TEST(ScalePrecalculatedTable, RejectsInvalidInputs) {
+  const uint8_t src = 17;
+  uint8_t dst = 42;
+  const auto table = kleidicv::neon::precalculate_scale_table_u8(2.0, 1.0);
+  auto function = kleidicv::neon::scale_with_precalculated_table_u8;
+
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+            function(nullptr, 1, &dst, 1, 1, 1, 2.0, 1.0, table));
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+            function(&src, 1, nullptr, 1, 1, 1, 2.0, 1.0, table));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            function(&src, 1, &dst, 1, KLEIDICV_MAX_IMAGE_PIXELS + 1, 1, 2.0,
+                     1.0, table));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            function(&src, 1, &dst, 1, std::numeric_limits<size_t>::max(), 2,
+                     2.0, 1.0, table));
+  EXPECT_EQ(42, dst);
 }

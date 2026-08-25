@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -6,6 +6,7 @@
 #define KLEIDICV_THRESHOLD_SC_H
 
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/sve2.h"
 
 namespace KLEIDICV_TARGET_NAMESPACE {
@@ -36,9 +37,10 @@ kleidicv_error_t threshold_binary_sc(const T *src, size_t src_stride, T *dst,
                                      size_t dst_stride, size_t width,
                                      size_t height, T threshold,
                                      T value) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const T> src_rows{src, src_stride};

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -7,6 +7,7 @@
 
 #include "kleidicv/conversions/rgb_to_rgb.h"
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/sve2.h"
 
 namespace KLEIDICV_TARGET_NAMESPACE {
@@ -186,9 +187,10 @@ class RGBAToRGB final : public UnrollTwice {
 KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t rgb_to_bgr_u8_sc(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 3 /* RGB */};
@@ -208,9 +210,10 @@ static kleidicv_error_t rgba_to_bgra_u8_sc(const uint8_t *src,
                                            size_t src_stride, uint8_t *dst,
                                            size_t dst_stride, size_t width,
                                            size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 4 /* RGBA */};
@@ -225,9 +228,10 @@ static kleidicv_error_t rgb_to_bgra_u8_sc(const uint8_t *src, size_t src_stride,
                                           uint8_t *dst, size_t dst_stride,
                                           size_t width,
                                           size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 3 /* RGB */};
@@ -242,9 +246,10 @@ static kleidicv_error_t rgb_to_rgba_u8_sc(const uint8_t *src, size_t src_stride,
                                           uint8_t *dst, size_t dst_stride,
                                           size_t width,
                                           size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 3 /* RGB */};
@@ -259,9 +264,10 @@ static kleidicv_error_t rgba_to_bgr_u8_sc(const uint8_t *src, size_t src_stride,
                                           uint8_t *dst, size_t dst_stride,
                                           size_t width,
                                           size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 4 /* RGBA */};
@@ -276,9 +282,10 @@ static kleidicv_error_t rgba_to_rgb_u8_sc(const uint8_t *src, size_t src_stride,
                                           uint8_t *dst, size_t dst_stride,
                                           size_t width,
                                           size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride, 4 /* RGBA */};

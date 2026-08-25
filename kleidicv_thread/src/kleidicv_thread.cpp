@@ -25,6 +25,7 @@
 #include "kleidicv/filters/separable_filter_2d.h"
 #include "kleidicv/filters/sobel.h"
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/resize/resize_linear.h"
 #include "kleidicv/transform/add_padding_by_copy.h"
 #include "kleidicv/transform/flip.h"
@@ -253,6 +254,10 @@ inline kleidicv_error_t kleidicv_thread_binary_op_impl(
       const src_type *src, size_t src_stride, dst_type *dst,                 \
       size_t dst_stride, size_t width, size_t height,                        \
       kleidicv_thread_multithreading mt) {                                   \
+    if (kleidicv_error_t err = kleidicv::unary_operation_validate(           \
+            src, src_stride, dst, dst_stride, width, height)) {              \
+      return err;                                                            \
+    }                                                                        \
     return kleidicv_thread_unary_op_impl(kleidicv_##suffix, mt, src,         \
                                          src_stride, dst, dst_stride, width, \
                                          height);                            \
@@ -277,6 +282,10 @@ kleidicv_error_t kleidicv_thread_exp_f32(const float *src, size_t src_stride,
                                          float *dst, size_t dst_stride,
                                          size_t width, size_t height,
                                          kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 #if KLEIDICV_ENABLE_SME_THREAD_DISPATCH
   return kleidicv_thread_unary_op_with_sme_impl(
       kleidicv_exp_f32, kleidicv_exp_f32_sme, mt, src, src_stride, dst,
@@ -292,6 +301,10 @@ kleidicv_error_t kleidicv_thread_exp_f32(const float *src, size_t src_stride,
       const src_type *src, size_t src_stride, dst_type *dst,                 \
       size_t dst_stride, size_t width, size_t height, src_type lower_bound,  \
       src_type upper_bound, kleidicv_thread_multithreading mt) {             \
+    if (kleidicv_error_t err = kleidicv::unary_operation_validate(           \
+            src, src_stride, dst, dst_stride, width, height)) {              \
+      return err;                                                            \
+    }                                                                        \
     return kleidicv_thread_unary_op_impl(kleidicv_##suffix, mt, src,         \
                                          src_stride, dst, dst_stride, width, \
                                          height, lower_bound, upper_bound);  \
@@ -299,19 +312,16 @@ kleidicv_error_t kleidicv_thread_exp_f32(const float *src, size_t src_stride,
 
 KLEIDICV_THREAD_INRANGE_OP_IMPL(in_range_f32, float, uint8_t);
 
-kleidicv_error_t kleidicv_thread_in_range_u8(
-    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
-    size_t width, size_t height, uint8_t lower_bound, uint8_t upper_bound,
-    kleidicv_thread_multithreading mt) {
-  return kleidicv_thread_unary_op_impl(kleidicv_in_range_u8, mt, src,
-                                       src_stride, dst, dst_stride, width,
-                                       height, lower_bound, upper_bound);
-}
+KLEIDICV_THREAD_INRANGE_OP_IMPL(in_range_u8, uint8_t, uint8_t);
 
 kleidicv_error_t kleidicv_thread_threshold_binary_u8(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height, uint8_t threshold, uint8_t value,
     kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
   return kleidicv_thread_unary_op_impl(kleidicv_threshold_binary_u8, mt, src,
                                        src_stride, dst, dst_stride, width,
                                        height, threshold, value);
@@ -322,9 +332,10 @@ kleidicv_error_t kleidicv_thread_scale_u8(const uint8_t *src, size_t src_stride,
                                           size_t width, size_t height,
                                           double scale, double shift,
                                           kleidicv_thread_multithreading mt) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   const std::array<uint8_t, 256> precalculated_table =
       kleidicv::neon::precalculate_scale_table_u8(scale, shift);
@@ -338,6 +349,10 @@ kleidicv_error_t kleidicv_thread_scale_f32(const float *src, size_t src_stride,
                                            size_t width, size_t height,
                                            double scale, double shift,
                                            kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
   return kleidicv_thread_unary_op_impl(kleidicv_scale_f32, mt, src, src_stride,
                                        dst, dst_stride, width, height, scale,
                                        shift);
@@ -347,6 +362,10 @@ kleidicv_error_t kleidicv_thread_scale_u8_f16(
     const uint8_t *src, size_t src_stride, float16_t *dst, size_t dst_stride,
     size_t width, size_t height, double scale, double shift,
     kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err = kleidicv::unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
   return kleidicv_thread_unary_op_impl(kleidicv_scale_u8_f16, mt, src,
                                        src_stride, dst, dst_stride, width,
                                        height, scale, shift);

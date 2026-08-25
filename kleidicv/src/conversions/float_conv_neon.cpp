@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -6,6 +6,7 @@
 
 #include "kleidicv/conversions/float_conversion.h"
 #include "kleidicv/neon.h"
+#include "kleidicv/operation_validation.h"
 
 namespace kleidicv::neon {
 
@@ -73,9 +74,10 @@ template <typename InputType, typename OutputType>
 kleidicv_error_t float_conversion(const InputType* src, size_t src_stride,
                                   OutputType* dst, size_t dst_stride,
                                   size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   float_conversion_operation<InputType, OutputType> operation;
   Rectangle rect{width, height};
@@ -99,9 +101,10 @@ kleidicv_error_t f32_to_u8(const float* src, size_t src_stride, uint8_t* dst,
 KLEIDICV_TARGET_FN_ATTRS kleidicv_error_t
 s8_to_f32(const int8_t* src, size_t src_stride, float* dst, size_t dst_stride,
           size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   // Indices used with the TBL instruction to widen from 8-bit to 32-bit in a
   // single instruction.
@@ -147,9 +150,10 @@ s8_to_f32(const int8_t* src, size_t src_stride, float* dst, size_t dst_stride,
 KLEIDICV_TARGET_FN_ATTRS kleidicv_error_t
 u8_to_f32(const uint8_t* src, size_t src_stride, float* dst, size_t dst_stride,
           size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   // Indices used with the TBL instruction to widen from 8-bit to 32-bit in a
   // single instruction.

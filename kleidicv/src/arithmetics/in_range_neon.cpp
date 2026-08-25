@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/neon.h"
+#include "kleidicv/operation_validation.h"
 
 namespace kleidicv::neon {
 
@@ -109,9 +110,10 @@ template <typename T>
 kleidicv_error_t in_range(const T *src, size_t src_stride, uint8_t *dst,
                           size_t dst_stride, size_t width, size_t height,
                           T lower_bound, T upper_bound) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   InRange<T> operation{lower_bound, upper_bound};
   Rectangle rect{width, height};

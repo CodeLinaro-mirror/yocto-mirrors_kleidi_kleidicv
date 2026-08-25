@@ -9,6 +9,7 @@
 
 #include "kleidicv/arithmetics/scale.h"
 #include "kleidicv/neon.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/traits.h"
 
 namespace kleidicv::neon {
@@ -182,6 +183,11 @@ kleidicv_error_t scale_with_precalculated_table_u8(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height, double scale, double shift,
     const std::array<uint8_t, 256> &precalculated_table) {
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
+
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride};
   Rows<uint8_t> dst_rows{dst, dst_stride};
@@ -197,9 +203,10 @@ template <>
 kleidicv_error_t scale(const uint8_t *src, size_t src_stride, uint8_t *dst,
                        size_t dst_stride, size_t width, size_t height,
                        double scale, double shift) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
   // For smaller inputs, the full calculation is the faster
   if (width * height < 675) {  // empirical value
     Rectangle rect{width, height};
@@ -310,9 +317,10 @@ template <>
 kleidicv_error_t scale(const float *src, size_t src_stride, float *dst,
                        size_t dst_stride, size_t width, size_t height,
                        double scale, double shift) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const float> src_rows{src, src_stride};
@@ -417,9 +425,10 @@ template <>
 kleidicv_error_t scale(const uint8_t *src, size_t src_stride, float16_t *dst,
                        size_t dst_stride, size_t width, size_t height,
                        double scale, double shift) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const uint8_t> src_rows{src, src_stride};

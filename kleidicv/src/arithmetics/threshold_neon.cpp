@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2023 - 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/neon.h"
+#include "kleidicv/operation_validation.h"
 
 namespace kleidicv::neon {
 
@@ -41,9 +42,10 @@ template <typename T>
 kleidicv_error_t threshold_binary(const T *src, size_t src_stride, T *dst,
                                   size_t dst_stride, size_t width,
                                   size_t height, T threshold, T value) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Rectangle rect{width, height};
   Rows<const T> src_rows{src, src_stride};
