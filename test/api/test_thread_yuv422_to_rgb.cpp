@@ -12,6 +12,7 @@
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "thread_validation.h"
 
 // Tuple of width, height, thread count.
 typedef std::tuple<unsigned, unsigned, unsigned> P;
@@ -155,3 +156,50 @@ INSTANTIATE_TEST_SUITE_P(, Yuv422Thread,
                                          P{2, 6, 3}, P{2, 7, 4}, P{12, 34, 5},
                                          P{12, 37, 5}, P{16, 37, 5},
                                          P{2, 1000, 2}));
+
+namespace {
+
+constexpr auto kUnsupported422 = static_cast<kleidicv_color_conversion_t>(
+    KLEIDICV_COLOR_CONVERSION_FMT_YUV422 | KLEIDICV_COLOR_CONVERSION_FLAG_VU |
+    KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
+
+constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+constexpr size_t kLargeEvenWidth = kLargeWidth - 1;
+
+using ThreadYuv422ToRgbValidation = test::ThreadValidation;
+
+TEST_F(ThreadYuv422ToRgbValidation, ChecksPrecedeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_dispatched(
+      2, kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, 2, 2,
+                                       KLEIDICV_YUYV_TO_RGB, scheduler()));
+
+  // Each row fits the size limit, but the complete image does not.
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, kLargeEvenWidth, 2,
+                                    KLEIDICV_YUYV_TO_RGB, scheduler()));
+
+  for (auto format :
+       {kUnsupported422, static_cast<kleidicv_color_conversion_t>(0xFF)}) {
+    SCOPED_TRACE(format);
+    expect_rejected(
+        KLEIDICV_ERROR_NOT_IMPLEMENTED,
+        kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, nullptr, 1, kLargeWidth, 2,
+                                      format, scheduler()));
+  }
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, nullptr, 1, kLargeWidth, 2,
+                                    KLEIDICV_YUYV_TO_RGB, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, 1, 1,
+                                    KLEIDICV_YUYV_TO_RGB, scheduler()));
+  expect_no_work(kleidicv_thread_yuv_to_rgb_u8(
+      &src, 1, &dst, 1, 2, 0, KLEIDICV_YUYV_TO_RGB, scheduler()));
+}
+
+}  // namespace

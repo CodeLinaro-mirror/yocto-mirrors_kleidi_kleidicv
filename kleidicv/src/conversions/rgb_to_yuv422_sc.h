@@ -237,16 +237,6 @@ static kleidicv_error_t rgb_to_yuv422_u8_sc(
     const uint8_t* src, size_t src_stride, uint8_t* dst, size_t dst_stride,
     size_t width, size_t height,
     kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
-  // YUV422 packs pixels in pairs: (Y0, U, Y1, V).
-  // Therefore, the image width must be at least 2 and always even.
-  if (width < 2 || (width % 2) != 0) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
-  }
-
   switch (color_format) {
     case KLEIDICV_BGR_TO_YUYV:
       return RGBxOrBGRxToYUV422<0, 1, 0, 3>::rgbx2yuv422_operation(
@@ -292,16 +282,11 @@ static kleidicv_error_t rgb_to_yuv422_u8_sc(
       return RGBxOrBGRxToYUV422<2, 0, 1, 4>::rgbx2yuv422_operation(
           src, src_stride, dst, dst_stride, width, height);
       break;
-    case KLEIDICV_RGBA_TO_YVYU:
+    default:  // KLEIDICV_RGBA_TO_YVYU, validated by the caller.
       return RGBxOrBGRxToYUV422<2, 3, 0, 4>::rgbx2yuv422_operation(
           src, src_stride, dst, dst_stride, width, height);
       break;
-    default:
-      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
-      break;
   }
-
-  return KLEIDICV_ERROR_NOT_IMPLEMENTED;
 }
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE

@@ -188,15 +188,15 @@ TEST_F(RgbToYuv420SpValidation, RgbToSemiplanar) {
 
   expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
-                      nullptr, 1, &y_dst, 1, &uv_dst, 1, 2, 2,
+                      nullptr, 1, &y_dst, 1, &uv_dst, 1, kLargeWidth, 2,
                       KLEIDICV_RGB_TO_NV12, scheduler()));
   expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
-                      &src, 1, nullptr, 1, &uv_dst, 1, 2, 2,
+                      &src, 1, nullptr, 1, &uv_dst, 1, kLargeWidth, 2,
                       KLEIDICV_RGB_TO_NV12, scheduler()));
   expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
-                      &src, 1, &y_dst, 1, nullptr, 1, 2, 2,
+                      &src, 1, &y_dst, 1, nullptr, 1, kLargeWidth, 2,
                       KLEIDICV_RGB_TO_NV12, scheduler()));
   expect_rejected(KLEIDICV_ERROR_RANGE,
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
@@ -206,21 +206,23 @@ TEST_F(RgbToYuv420SpValidation, RgbToSemiplanar) {
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
                       &src, 1, &y_dst, 1, &uv_dst, 1, 2, kMaxSize,
                       KLEIDICV_RGB_TO_NV12, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
-                      &src, 1, &y_dst, 1, &uv_dst, 1, 2, 2, kUnsupportedFormat,
-                      scheduler()));
-  expect_rejected(KLEIDICV_ERROR_RANGE,
-                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
-                      &src, 1, &y_dst, 1, &uv_dst, 1, kLargeWidth, 2,
-                      kUnsupportedFormat, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
-                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
-                      nullptr, 1, &y_dst, 1, &uv_dst, 1, 2, 2,
-                      kUnsupportedFormat, scheduler()));
+  for (auto format :
+       {kUnsupportedFormat, static_cast<kleidicv_color_conversion_t>(0xFF),
+        KLEIDICV_RGB_TO_IYUV}) {
+    SCOPED_TRACE(format);
+    expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                    kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                        nullptr, 1, nullptr, 1, nullptr, 1, kLargeWidth, 2,
+                        format, scheduler()));
+  }
   expect_dispatched(2, kleidicv_thread_rgb_to_yuv_semiplanar_u8(
                            &src, 1, &y_dst, 1, &uv_dst, 1, 2, 3,
                            KLEIDICV_RGB_TO_NV12, scheduler()));
+
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_rgb_to_yuv_u8(nullptr, 1, nullptr, 1, 2, 2,
+                                    KLEIDICV_RGB_TO_NV12, scheduler()));
 }
 
 TEST_F(RgbToYuv420SpValidation, EmptyImages) {
@@ -236,7 +238,8 @@ TEST_F(RgbToYuv420SpValidation, EmptyImages) {
     const size_t width = shape[0];
     const size_t height = shape[1];
     for (auto format : {KLEIDICV_RGB_TO_NV12, KLEIDICV_RGB_TO_NV21,
-                        kleidicv_color_conversion_t{}}) {
+                        kleidicv_color_conversion_t{},
+                        static_cast<kleidicv_color_conversion_t>(0xFF)}) {
       SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
                                       << height << ", format=" << format);
       for (auto function : {kleidicv_rgb_to_yuv_semiplanar_u8,

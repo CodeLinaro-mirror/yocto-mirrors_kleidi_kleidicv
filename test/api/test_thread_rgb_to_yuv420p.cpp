@@ -164,11 +164,11 @@ TEST_F(RgbToYuv420PValidation, RgbToPlanar) {
 
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_rgb_to_yuv_u8(nullptr, 1, &dst, 1, 2, 2,
+      kleidicv_thread_rgb_to_yuv_u8(nullptr, 1, &dst, 1, kLargeWidth, 2,
                                     KLEIDICV_RGB_TO_IYUV, scheduler()));
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_rgb_to_yuv_u8(&src, 1, nullptr, 1, 2, 2,
+      kleidicv_thread_rgb_to_yuv_u8(&src, 1, nullptr, 1, kLargeWidth, 2,
                                     KLEIDICV_RGB_TO_IYUV, scheduler()));
   expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_rgb_to_yuv_u8(
                                             &src, 1, &dst, 1, kLargeWidth, 2,
@@ -176,16 +176,14 @@ TEST_F(RgbToYuv420PValidation, RgbToPlanar) {
   expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_rgb_to_yuv_u8(
                                             &src, 1, &dst, 1, 2, kMaxSize,
                                             KLEIDICV_RGB_TO_IYUV, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-                  kleidicv_thread_rgb_to_yuv_u8(
-                      &src, 1, &dst, 1, 2, 2, kUnsupportedFormat, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_rgb_to_yuv_u8(
-                                            &src, 1, &dst, 1, kLargeWidth, 2,
-                                            kUnsupportedFormat, scheduler()));
-  expect_rejected(
-      KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_rgb_to_yuv_u8(nullptr, 1, &dst, 1, 2, 2,
-                                    kUnsupportedFormat, scheduler()));
+  for (auto format :
+       {kUnsupportedFormat, static_cast<kleidicv_color_conversion_t>(0xFF)}) {
+    SCOPED_TRACE(format);
+    expect_rejected(
+        KLEIDICV_ERROR_NOT_IMPLEMENTED,
+        kleidicv_thread_rgb_to_yuv_u8(nullptr, 1, nullptr, 1, kLargeWidth, 2,
+                                      format, scheduler()));
+  }
 
   expect_dispatched(
       2, kleidicv_thread_rgb_to_yuv_u8(&src, 1, &dst, 1, 2, 3,
@@ -205,7 +203,8 @@ TEST_F(RgbToYuv420PValidation, EmptyImages) {
     const size_t height = shape[1];
     for (auto format :
          {KLEIDICV_RGB_TO_IYUV, KLEIDICV_RGB_TO_YV12, KLEIDICV_RGB_TO_YUV444,
-          KLEIDICV_RGB_TO_YUYV, kleidicv_color_conversion_t{}}) {
+          KLEIDICV_RGB_TO_YUYV, kleidicv_color_conversion_t{},
+          static_cast<kleidicv_color_conversion_t>(0xFF)}) {
       SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
                                       << height << ", format=" << format);
       for (auto function :

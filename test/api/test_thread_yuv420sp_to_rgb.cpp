@@ -240,11 +240,11 @@ TEST_F(Yuv420SpToRgbValidation, PackedSemiplanarToRgb) {
 
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, &dst, 1, 2, 2,
+      kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, &dst, 1, kLargeWidth, 2,
                                     KLEIDICV_NV12_TO_RGB, scheduler()));
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_yuv_to_rgb_u8(&src, 1, nullptr, 1, 2, 2,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, nullptr, 1, kLargeWidth, 2,
                                     KLEIDICV_NV12_TO_RGB, scheduler()));
   expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
                                             &src, 1, &dst, 1, kLargeWidth, 2,
@@ -252,18 +252,14 @@ TEST_F(Yuv420SpToRgbValidation, PackedSemiplanarToRgb) {
   expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
                                             &src, 1, &dst, 1, 2, kMaxSize,
                                             KLEIDICV_NV12_TO_RGB, scheduler()));
-  expect_rejected(
-      KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, &dst, 1, 2, 2,
-                                    kUnsupportedFormat, scheduler()));
-  expect_rejected(
-      KLEIDICV_ERROR_NULL_POINTER,
-      kleidicv_thread_yuv_to_rgb_u8(&src, 1, nullptr, 1, 2, 2,
-                                    kUnsupportedFormat, scheduler()));
-  expect_rejected(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
-      kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, kLargeWidth, 2,
-                                    kUnsupportedFormat, scheduler()));
+  for (auto format :
+       {kUnsupportedFormat, static_cast<kleidicv_color_conversion_t>(0xFF)}) {
+    SCOPED_TRACE(format);
+    expect_rejected(
+        KLEIDICV_ERROR_NOT_IMPLEMENTED,
+        kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, nullptr, 1, kLargeWidth, 2,
+                                      format, scheduler()));
+  }
 }
 
 TEST_F(Yuv420SpToRgbValidation, SplitSemiplanarToRgb) {
@@ -274,20 +270,18 @@ TEST_F(Yuv420SpToRgbValidation, SplitSemiplanarToRgb) {
       KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP |
       KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
 
-  for (auto format : {KLEIDICV_NV12_TO_RGB, kUnsupportedFormat}) {
-    expect_rejected(
-        KLEIDICV_ERROR_NULL_POINTER,
-        kleidicv_thread_yuv_semiplanar_to_rgb_u8(nullptr, 1, &src_uv, 1, &dst,
-                                                 1, 2, 2, format, scheduler()));
-    expect_rejected(
-        KLEIDICV_ERROR_NULL_POINTER,
-        kleidicv_thread_yuv_semiplanar_to_rgb_u8(&src_y, 1, nullptr, 1, &dst, 1,
-                                                 2, 2, format, scheduler()));
-    expect_rejected(
-        KLEIDICV_ERROR_NULL_POINTER,
-        kleidicv_thread_yuv_semiplanar_to_rgb_u8(&src_y, 1, &src_uv, 1, nullptr,
-                                                 1, 2, 2, format, scheduler()));
-  }
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      nullptr, 1, &src_uv, 1, &dst, 1, kLargeWidth, 2,
+                      KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      &src_y, 1, nullptr, 1, &dst, 1, kLargeWidth, 2,
+                      KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      &src_y, 1, &src_uv, 1, nullptr, 1, kLargeWidth, 2,
+                      KLEIDICV_NV12_TO_RGB, scheduler()));
 
   // Each two-row slice fits the image-size limit, but the complete image does
   // not. Reject it before the scheduler can split it into valid-sized slices.
@@ -295,13 +289,41 @@ TEST_F(Yuv420SpToRgbValidation, SplitSemiplanarToRgb) {
                   kleidicv_thread_yuv_semiplanar_to_rgb_u8(
                       &src_y, 1, &src_uv, 1, &dst, 1, kLargeWidth / 2, 4,
                       KLEIDICV_NV12_TO_RGB, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-                      &src_y, 1, &src_uv, 1, &dst, 1, kLargeWidth, 2,
-                      kUnsupportedFormat, scheduler()));
+  for (auto format :
+       {kUnsupportedFormat, static_cast<kleidicv_color_conversion_t>(0xFF),
+        KLEIDICV_IYUV_TO_RGB}) {
+    SCOPED_TRACE(format);
+    expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                    kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                        nullptr, 1, nullptr, 1, nullptr, 1, kLargeWidth, 2,
+                        format, scheduler()));
+  }
   expect_dispatched(2, kleidicv_thread_yuv_semiplanar_to_rgb_u8(
                            &src_y, 1, &src_uv, 1, &dst, 1, 2, 3,
                            KLEIDICV_NV12_TO_RGB, scheduler()));
+}
+
+TEST_F(Yuv420SpToRgbValidation, PackedAddressWrapPreservesErrorPrecedence) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  const size_t wrapping_stride =
+      uintptr_t{0} - reinterpret_cast<uintptr_t>(&src);
+  constexpr size_t kWidth = KLEIDICV_MAX_IMAGE_PIXELS + 1;
+  constexpr auto kUnsupportedFormat = static_cast<kleidicv_color_conversion_t>(
+      KLEIDICV_NV12_TO_RGB | KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_yuv_to_rgb_u8(&src, wrapping_stride, &dst, 1, kWidth, 1,
+                                    KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_yuv_to_rgb_u8(&src, wrapping_stride, nullptr, 1, kWidth,
+                                    1, KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_yuv_to_rgb_u8(&src, wrapping_stride, nullptr, 1, kWidth,
+                                    1, kUnsupportedFormat, scheduler()));
+  EXPECT_EQ(42, dst);
 }
 
 TEST_F(Yuv420SpToRgbValidation, EmptyImages) {
@@ -317,7 +339,8 @@ TEST_F(Yuv420SpToRgbValidation, EmptyImages) {
     const size_t width = shape[0];
     const size_t height = shape[1];
     for (auto format : {KLEIDICV_NV12_TO_RGB, KLEIDICV_NV21_TO_RGB,
-                        kleidicv_color_conversion_t{}}) {
+                        kleidicv_color_conversion_t{},
+                        static_cast<kleidicv_color_conversion_t>(0xFF)}) {
       SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
                                       << height << ", format=" << format);
       for (auto function : {kleidicv_yuv_semiplanar_to_rgb_u8,
@@ -338,6 +361,10 @@ TEST_F(Yuv420SpToRgbValidation, EmptyImages) {
           height, format, scheduler()));
     }
   }
+
+  expect_no_work(kleidicv_thread_yuv_to_rgb_u8(
+      &src_y, 1, &dst, 1, 0, 3, KLEIDICV_NV12_TO_RGB, scheduler()));
+  EXPECT_EQ(kUntouched, dst);
 }
 
 TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbHonorsChromaRowRange) {

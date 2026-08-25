@@ -154,10 +154,6 @@ template <typename OperationType, typename ScalarType>
 KLEIDICV_FORCE_INLINE kleidicv_error_t yuv2rgb_operation(
     OperationType &operation, const ScalarType *src, size_t src_stride,
     ScalarType *dst, size_t dst_stride, size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
   Rectangle rect{width, height};
   Rows src_rows{src, src_stride, 3};
   Rows dst_rows{dst, dst_stride, operation.output_channels()};
@@ -195,17 +191,12 @@ kleidicv_error_t yuv444_to_rgb_u8(const uint8_t *src, size_t src_stride,
                                width, height);
     }
 
-    case KLEIDICV_YUV444_TO_BGRA: {
+    default: {  // KLEIDICV_YUV444_TO_BGRA, validated by the caller.
       YUVToBGRA operation;
       return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride,
                                width, height);
     }
-
-    default:
-      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-
-  return KLEIDICV_ERROR_NOT_IMPLEMENTED;
 }
 
 }  // namespace kleidicv::neon

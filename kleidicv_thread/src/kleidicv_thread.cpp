@@ -567,47 +567,120 @@ kleidicv_error_t kleidicv_thread_yuv_to_rgb_u8(
     return KLEIDICV_OK;
   }
 
-  // Extract the base format
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV444) {
-    return kleidicv_thread_unary_op_impl(kleidicv_yuv444_to_rgb_u8, mt, src,
-                                         src_stride, dst, dst_stride, width,
-                                         height, color_format);
-  }
-
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV422) {
-    return kleidicv_thread_unary_op_impl(kleidicv_yuv422_to_rgb_u8, mt, src,
-                                         src_stride, dst, dst_stride, width,
-                                         height, color_format);
-  }
-
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP) {
-    // Preserve the threaded API's null-pointer precedence over format errors.
-    CHECK_POINTERS(src, dst);
-    if (kleidicv_error_t err = kleidicv::yuv420sp_to_rgb_validate(
-            src, dst, width, height, color_format)) {
-      return err;
+  switch (base_format) {
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV444:
+      if (kleidicv_error_t err = kleidicv::yuv444_to_rgb_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      return kleidicv_thread_unary_op_impl(kleidicv_yuv444_to_rgb_u8, mt, src,
+                                           src_stride, dst, dst_stride, width,
+                                           height, color_format);
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV422:
+      if (kleidicv_error_t err = kleidicv::yuv422_to_rgb_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      return kleidicv_thread_unary_op_impl(kleidicv_yuv422_to_rgb_u8, mt, src,
+                                           src_stride, dst, dst_stride, width,
+                                           height, color_format);
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP: {
+      const uint8_t *src_uv =
+          kleidicv::get_yuv420sp_uv_plane(src, src_stride, width, height);
+      return kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+          src, src_stride, src_uv, src_stride, dst, dst_stride, width, height,
+          color_format, mt);
     }
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV420P: {
+      if (kleidicv_error_t err = kleidicv::yuv420p_to_rgb_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      auto callback = [=](size_t begin, size_t end) {
+        return kleidicv_yuv420p_to_rgb_stripe_u8(src, src_stride, dst,
+                                                 dst_stride, width, height,
+                                                 color_format, begin, end);
+      };
+      return parallel_batches(callback, mt,
+                              kleidicv::yuv420_chroma_height(height));
+    }
+    default:
+      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+}
 
-    const uint8_t *src_uv =
-        kleidicv::get_yuv420sp_uv_plane(src, src_stride, width, height);
-    return kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-        src, src_stride, src_uv, src_stride, dst, dst_stride, width, height,
-        color_format, mt);
+kleidicv_error_t kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+    const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
+    size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
+    size_t height, kleidicv_color_conversion_t color_format,
+    kleidicv_thread_multithreading mt) {
+  if (width == 0 || height == 0) {
+    return KLEIDICV_OK;
   }
 
-  if (kleidicv_error_t err = kleidicv::yuv420p_to_rgb_validate(
-          src, dst, width, height, color_format)) {
+  if (kleidicv_error_t err = kleidicv::yuv420sp_to_rgb_validate(
+          src_y, src_uv, dst, width, height, color_format)) {
     return err;
   }
 
   auto callback = [=](size_t begin, size_t end) {
-    return kleidicv_yuv420p_to_rgb_stripe_u8(src, src_stride, dst, dst_stride,
-                                             width, height, color_format, begin,
-                                             end);
+    size_t row_begin = kleidicv::yuv420_luma_row(begin, height);
+    size_t row_end = kleidicv::yuv420_luma_row(end, height);
+    size_t row_uv = begin;
+    return kleidicv_yuv_semiplanar_to_rgb_u8(
+        src_y + row_begin * src_y_stride, src_y_stride,
+        src_uv + row_uv * src_uv_stride, src_uv_stride,
+        dst + row_begin * dst_stride, dst_stride, width, row_end - row_begin,
+        color_format);
   };
   return parallel_batches(callback, mt, kleidicv::yuv420_chroma_height(height));
+}
+
+kleidicv_error_t kleidicv_thread_rgb_to_yuv_u8(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height, kleidicv_color_conversion_t color_format,
+    kleidicv_thread_multithreading mt) {
+  if (width == 0 || height == 0) {
+    return KLEIDICV_OK;
+  }
+
+  const size_t base_format = static_cast<size_t>(
+      color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
+  switch (base_format) {
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV444:
+      if (kleidicv_error_t err = kleidicv::rgb_to_yuv444_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      return kleidicv_thread_unary_op_impl(kleidicv_rgb_to_yuv444_u8, mt, src,
+                                           src_stride, dst, dst_stride, width,
+                                           height, color_format);
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV422:
+      if (kleidicv_error_t err = kleidicv::rgb_to_yuv422_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      return kleidicv_thread_unary_op_impl(kleidicv_rgb_to_yuv422_u8, mt, src,
+                                           src_stride, dst, dst_stride, width,
+                                           height, color_format);
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV420P: {
+      if (kleidicv_error_t err = kleidicv::rgb_to_yuv420p_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      auto callback = [=](size_t begin, size_t end) {
+        return kleidicv_rgb_to_yuv420p_stripe_u8(src, src_stride, dst,
+                                                 dst_stride, width, height,
+                                                 color_format, begin, end);
+      };
+      return parallel_batches(callback, mt,
+                              kleidicv::yuv420_chroma_height(height));
+    }
+    default:
+      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
 }
 
 kleidicv_error_t kleidicv_thread_rgb_to_yuv_semiplanar_u8(
@@ -628,74 +701,6 @@ kleidicv_error_t kleidicv_thread_rgb_to_yuv_semiplanar_u8(
     return kleidicv_rgb_to_yuv420sp_stripe_u8(src, src_stride, y_dst, y_stride,
                                               uv_dst, uv_stride, width, height,
                                               color_format, begin, end);
-  };
-  return parallel_batches(callback, mt, kleidicv::yuv420_chroma_height(height));
-}
-
-kleidicv_error_t kleidicv_thread_rgb_to_yuv_u8(
-    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
-    size_t width, size_t height, kleidicv_color_conversion_t color_format,
-    kleidicv_thread_multithreading mt) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
-  // Extract the base format
-  const size_t base_format = static_cast<size_t>(
-      color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV444) {
-    return kleidicv_thread_unary_op_impl(kleidicv_rgb_to_yuv444_u8, mt, src,
-                                         src_stride, dst, dst_stride, width,
-                                         height, color_format);
-  }
-
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV422) {
-    return kleidicv_thread_unary_op_impl(kleidicv_rgb_to_yuv422_u8, mt, src,
-                                         src_stride, dst, dst_stride, width,
-                                         height, color_format);
-  }
-
-  if (kleidicv_error_t err = kleidicv::rgb_to_yuv420p_validate(
-          src, dst, width, height, color_format)) {
-    return err;
-  }
-
-  auto callback = [=](size_t begin, size_t end) {
-    return kleidicv_rgb_to_yuv420p_stripe_u8(src, src_stride, dst, dst_stride,
-                                             width, height, color_format, begin,
-                                             end);
-  };
-  return parallel_batches(callback, mt, kleidicv::yuv420_chroma_height(height));
-}
-
-kleidicv_error_t kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-    const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
-    size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
-    size_t height, kleidicv_color_conversion_t color_format,
-    kleidicv_thread_multithreading mt) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
-  // Preserve the threaded API's null-pointer precedence over format errors.
-  if (src_y == nullptr || src_uv == nullptr || dst == nullptr) {
-    return KLEIDICV_ERROR_NULL_POINTER;
-  }
-
-  if (kleidicv_error_t err = kleidicv::yuv_semiplanar_to_rgb_validate(
-          src_y, src_uv, dst, width, height, color_format)) {
-    return err;
-  }
-
-  auto callback = [=](size_t begin, size_t end) {
-    size_t row_begin = kleidicv::yuv420_luma_row(begin, height);
-    size_t row_end = kleidicv::yuv420_luma_row(end, height);
-    size_t row_uv = begin;
-    return kleidicv_yuv_semiplanar_to_rgb_u8(
-        src_y + row_begin * src_y_stride, src_y_stride,
-        src_uv + row_uv * src_uv_stride, src_uv_stride,
-        dst + row_begin * dst_stride, dst_stride, width, row_end - row_begin,
-        color_format);
   };
   return parallel_batches(callback, mt, kleidicv::yuv420_chroma_height(height));
 }

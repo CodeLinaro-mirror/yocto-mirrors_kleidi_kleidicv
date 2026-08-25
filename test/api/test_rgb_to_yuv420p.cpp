@@ -265,14 +265,28 @@ TEST_F(RGB2YUV420pTest, ChromaVectorBoundaries) {
 }
 
 TEST_F(RGB2YUV420pTest, ReturnsErrorForUnsupportedCombinations) {
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_BGR_TO_YV12);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_RGB_TO_YV12);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_BGRA_TO_YV12);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_RGBA_TO_YV12);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_BGR_TO_IYUV);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_RGB_TO_IYUV);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_BGRA_TO_IYUV);
-  run_unsupported(kleidicv_rgb_to_yuv_u8, KLEIDICV_RGBA_TO_IYUV);
+  for (auto function : {kleidicv_rgb_to_yuv_u8, kleidicv_rgb_to_yuv_u8_sme}) {
+    for (auto format :
+         {KLEIDICV_BGR_TO_YV12, KLEIDICV_RGB_TO_YV12, KLEIDICV_BGRA_TO_YV12,
+          KLEIDICV_RGBA_TO_YV12, KLEIDICV_BGR_TO_IYUV, KLEIDICV_RGB_TO_IYUV,
+          KLEIDICV_BGRA_TO_IYUV, KLEIDICV_RGBA_TO_IYUV}) {
+      run_unsupported(function, format);
+    }
+    // Check unsupported modifiers and an invalid base within the enum range.
+    for (unsigned flags :
+         {static_cast<unsigned>(KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST),
+          0xFFU}) {
+      SCOPED_TRACE(flags);
+      const auto format = static_cast<kleidicv_color_conversion_t>(
+          KLEIDICV_RGB_TO_IYUV | flags);
+      EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                function(nullptr, 1, nullptr, 1, KLEIDICV_MAX_IMAGE_PIXELS, 2,
+                         format));
+    }
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              function(nullptr, 1, nullptr, 1, KLEIDICV_MAX_IMAGE_PIXELS, 2,
+                       KLEIDICV_RGB_TO_IYUV));
+  }
 }
 
 TEST(Yuv420StripeWorkers, RgbToPlanarHonorsChromaRowRange) {
@@ -302,9 +316,9 @@ TEST(Yuv420StripeWorkers, RgbToPlanarHonorsChromaRowRange) {
   std::array<uint8_t, kDstStride*(kHeight + kChromaHeight)> actual = {};
   actual.fill(kUntouched);
 
-  ASSERT_EQ(KLEIDICV_OK,
-            kleidicv::rgb_to_yuv420p_validate(src.data(), actual.data(), kWidth,
-                                              kHeight, KLEIDICV_RGB_TO_IYUV));
+  ASSERT_EQ(KLEIDICV_OK, kleidicv::rgb_to_yuv420p_validate(
+                             src.data(), kSrcStride, actual.data(), kDstStride,
+                             kWidth, kHeight, KLEIDICV_RGB_TO_IYUV));
   ASSERT_EQ(KLEIDICV_OK,
             kleidicv_rgb_to_yuv_u8(src.data() + kLumaBegin * kSrcStride,
                                    kSrcStride, expected.data(), kWidth, kWidth,

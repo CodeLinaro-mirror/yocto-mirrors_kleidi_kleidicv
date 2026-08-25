@@ -7,7 +7,7 @@
 
 #include <functional>
 
-#include "kleidicv/conversions/yuv420.h"
+#include "kleidicv/conversions/yuv_common.h"
 #include "kleidicv/sve2.h"
 #include "yuv42x_coefficients.h"
 
@@ -24,10 +24,6 @@ class RGBxorBGRxToYUV420 {
       const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
       uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
       bool v_first, size_t begin, size_t end) KLEIDICV_STREAMING {
-    if (width == 0 || height == 0) {
-      return KLEIDICV_OK;
-    }
-
     size_t row_begin = yuv420_luma_row(begin, height);
     size_t row_end = yuv420_luma_row(end, height);
     const uint8_t *src_row = nullptr;

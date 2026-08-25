@@ -1,8 +1,10 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
+
+#include <limits>
 
 #include "framework/array.h"
 #include "framework/utils.h"
@@ -177,3 +179,42 @@ TEST(YuvToRgb, YUV444_TO_BGRA_VECTOR) {
   yuv2rgb_test.execute_vector_test(kleidicv_yuv_to_rgb_u8,
                                    KLEIDICV_YUV444_TO_BGRA);
 }
+
+namespace {
+
+TEST(YuvToRgb, EntryPointsRetainChecks) {
+  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+  uint8_t src = 0;
+  uint8_t dst = 42;
+
+  for (auto function : {kleidicv_yuv_to_rgb_u8, kleidicv_yuv_to_rgb_u8_sme}) {
+    // Unsupported flags take precedence over null pointers and size limits.
+    for (unsigned flags :
+         {static_cast<unsigned>(KLEIDICV_COLOR_CONVERSION_FLAG_VU),
+          static_cast<unsigned>(KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST),
+          0xFFU}) {
+      SCOPED_TRACE(flags);
+      const auto format = static_cast<kleidicv_color_conversion_t>(
+          KLEIDICV_YUV444_TO_RGB | flags);
+      EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                function(nullptr, 1, nullptr, 1, kMaxSize, 2, format));
+    }
+    test::test_null_args(function, &src, 1, &dst, 1, kMaxSize, 2,
+                         KLEIDICV_YUV444_TO_RGB);
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              function(&src, 1, &dst, 1, kMaxSize, 2, KLEIDICV_YUV444_TO_RGB));
+
+    // Empty images return before checking format, pointers, or size.
+    constexpr auto kInvalidFormat =
+        static_cast<kleidicv_color_conversion_t>(0xFF);
+    EXPECT_EQ(KLEIDICV_OK, function(nullptr, kMaxSize, nullptr, kMaxSize, 0,
+                                    kMaxSize, kInvalidFormat));
+    EXPECT_EQ(KLEIDICV_OK, function(nullptr, kMaxSize, nullptr, kMaxSize,
+                                    kMaxSize, 0, kInvalidFormat));
+    EXPECT_EQ(KLEIDICV_OK,
+              function(&src, 1, &dst, 1, 1, 0, KLEIDICV_YUV444_TO_RGB));
+    EXPECT_EQ(42, dst);
+  }
+}
+
+}  // namespace

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -146,10 +146,6 @@ kleidicv_error_t yuv2rgb_operation(OperationType operation,
                                    ScalarType *dst, size_t dst_stride,
                                    size_t width,
                                    size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
   Rectangle rect{width, height};
   Rows src_rows{src, src_stride, 3};
   Rows dst_rows{dst, dst_stride, operation.output_channels()};
@@ -182,17 +178,12 @@ static kleidicv_error_t yuv444_to_rgb_u8_sc(
                                width, height);
     }
 
-    case KLEIDICV_YUV444_TO_BGRA: {
+    default: {  // KLEIDICV_YUV444_TO_BGRA, validated by the caller.
       YUVToRGB<true, true> operation;
       return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride,
                                width, height);
     }
-
-    default:
-      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-
-  return KLEIDICV_ERROR_NOT_IMPLEMENTED;
 }
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE

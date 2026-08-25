@@ -280,44 +280,37 @@ TEST_F(RGB2YUV420SpTest, ChromaVectorBoundaries) {
 }
 
 TEST_F(RGB2YUV420SpTest, ReturnsErrorForUnsupportedCombinations) {
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_BGR_TO_NV21);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_RGB_TO_NV21);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_BGRA_TO_NV21);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_RGBA_TO_NV21);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_BGR_TO_NV12);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_RGB_TO_NV12);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_BGRA_TO_NV12);
-  run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_RGBA_TO_NV12);
-}
+  for (auto function : {kleidicv_rgb_to_yuv_semiplanar_u8,
+                        kleidicv_rgb_to_yuv_semiplanar_u8_sme}) {
+    for (auto format :
+         {KLEIDICV_BGR_TO_NV21, KLEIDICV_RGB_TO_NV21, KLEIDICV_BGRA_TO_NV21,
+          KLEIDICV_RGBA_TO_NV21, KLEIDICV_BGR_TO_NV12, KLEIDICV_RGB_TO_NV12,
+          KLEIDICV_BGRA_TO_NV12, KLEIDICV_RGBA_TO_NV12}) {
+      run_unsupported(function, format);
+    }
+    // Check unsupported modifiers and an invalid base within the enum range.
+    for (unsigned flags :
+         {static_cast<unsigned>(KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST),
+          0xFFU}) {
+      SCOPED_TRACE(flags);
+      const auto format = static_cast<kleidicv_color_conversion_t>(
+          KLEIDICV_RGB_TO_NV12 | flags);
+      EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                function(nullptr, 1, nullptr, 1, nullptr, 1,
+                         KLEIDICV_MAX_IMAGE_PIXELS, 2, format));
+    }
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              function(nullptr, 1, nullptr, 1, nullptr, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, 2, KLEIDICV_RGB_TO_NV12));
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              function(nullptr, 1, nullptr, 1, nullptr, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, 2, KLEIDICV_RGB_TO_IYUV));
+  }
 
-TEST(Yuv420StripeWorkers, RgbToSemiplanarEmptyImages) {
-  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
-  constexpr uint8_t kUntouched = 0xFE;
-
-  // Public APIs return before reaching this internal empty-image guard.
-  for (auto shape :
-       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
-        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
-        std::array<size_t, 2>{kMaxSize, 0}}) {
-    const size_t width = shape[0];
-    const size_t height = shape[1];
-    SCOPED_TRACE(testing::Message()
-                 << "width=" << width << ", height=" << height);
-    const size_t end = kleidicv::yuv420_chroma_height(height);
-    const uint8_t src = 0;
-    uint8_t y_dst = kUntouched;
-    uint8_t uv_dst = kUntouched;
-
-    EXPECT_EQ(KLEIDICV_OK,
-              kleidicv_rgb_to_yuv420sp_stripe_u8(
-                  &src, kMaxSize, &y_dst, kMaxSize, &uv_dst, kMaxSize, width,
-                  height, KLEIDICV_RGB_TO_NV12, 0, end));
-    EXPECT_EQ(kUntouched, y_dst);
-    EXPECT_EQ(kUntouched, uv_dst);
-    EXPECT_EQ(KLEIDICV_OK,
-              kleidicv_rgb_to_yuv420sp_stripe_u8(
-                  nullptr, kMaxSize, nullptr, kMaxSize, nullptr, kMaxSize,
-                  width, height, KLEIDICV_RGB_TO_NV12, 0, end));
+  // Semiplanar output requires the dedicated API, even for a valid NV12 format.
+  for (auto function : {kleidicv_rgb_to_yuv_u8, kleidicv_rgb_to_yuv_u8_sme}) {
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              function(nullptr, 1, nullptr, 1, 2, 2, KLEIDICV_RGB_TO_NV12));
   }
 }
 

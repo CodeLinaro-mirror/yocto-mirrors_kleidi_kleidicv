@@ -34,43 +34,51 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
     return KLEIDICV_OK;
   }
 
-  // Extract the base format
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV444) {
-    if constexpr (kUseSME) {
-      return kleidicv_rgb_to_yuv444_u8_sme(src, src_stride, dst, dst_stride,
-                                           width, height, color_format);
-    } else {
-      return kleidicv_rgb_to_yuv444_u8(src, src_stride, dst, dst_stride, width,
-                                       height, color_format);
-    }
-  }
-  if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV422) {
-    if constexpr (kUseSME) {
-      return kleidicv_rgb_to_yuv422_u8_sme(src, src_stride, dst, dst_stride,
-                                           width, height, color_format);
-    } else {
-      return kleidicv_rgb_to_yuv422_u8(src, src_stride, dst, dst_stride, width,
-                                       height, color_format);
-    }
-  }
-
-  // YUV420 uses 2x2 chroma blocks spanning adjacent rows, so the stripe API
-  // provides each invocation with contiguous rows and the proper per-plane
-  // offsets for that slice.
-  if (kleidicv_error_t err =
-          rgb_to_yuv420p_validate(src, dst, width, height, color_format)) {
-    return err;
-  }
-  if constexpr (kUseSME) {
-    return kleidicv_rgb_to_yuv420p_stripe_u8_sme(
-        src, src_stride, dst, dst_stride, width, height, color_format, 0,
-        yuv420_chroma_height(height));
-  } else {
-    return kleidicv_rgb_to_yuv420p_stripe_u8(src, src_stride, dst, dst_stride,
-                                             width, height, color_format, 0,
-                                             yuv420_chroma_height(height));
+  switch (base_format) {
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV444:
+      if (kleidicv_error_t err = rgb_to_yuv444_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      if constexpr (kUseSME) {
+        return kleidicv_rgb_to_yuv444_u8_sme(src, src_stride, dst, dst_stride,
+                                             width, height, color_format);
+      } else {
+        return kleidicv_rgb_to_yuv444_u8(src, src_stride, dst, dst_stride,
+                                         width, height, color_format);
+      }
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV422:
+      if (kleidicv_error_t err = rgb_to_yuv422_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      if constexpr (kUseSME) {
+        return kleidicv_rgb_to_yuv422_u8_sme(src, src_stride, dst, dst_stride,
+                                             width, height, color_format);
+      } else {
+        return kleidicv_rgb_to_yuv422_u8(src, src_stride, dst, dst_stride,
+                                         width, height, color_format);
+      }
+    case KLEIDICV_COLOR_CONVERSION_FMT_YUV420P:
+      if (kleidicv_error_t err = rgb_to_yuv420p_validate(
+              src, src_stride, dst, dst_stride, width, height, color_format)) {
+        return err;
+      }
+      // Use the stripe worker for the full image as well as threaded work:
+      // splitting by chroma rows keeps each shared 2x2 pixel block together.
+      if constexpr (kUseSME) {
+        return kleidicv_rgb_to_yuv420p_stripe_u8_sme(
+            src, src_stride, dst, dst_stride, width, height, color_format, 0,
+            yuv420_chroma_height(height));
+      } else {
+        return kleidicv_rgb_to_yuv420p_stripe_u8(
+            src, src_stride, dst, dst_stride, width, height, color_format, 0,
+            yuv420_chroma_height(height));
+      }
+    default:
+      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 }
 
@@ -87,6 +95,8 @@ kleidicv_error_t rgb_to_yuv_semiplanar_u8(
                                                       height, color_format)) {
     return err;
   }
+  // Adapt the whole image to the chroma-row range expected by the stripe
+  // worker.
   return StripeFunction(src, src_stride, y_dst, y_stride, uv_dst, uv_stride,
                         width, height, color_format, 0,
                         yuv420_chroma_height(height));

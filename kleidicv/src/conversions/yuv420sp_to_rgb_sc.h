@@ -81,8 +81,8 @@ static kleidicv_error_t yuv420sp_to_rgb_u8_sc(
     return KLEIDICV_OK;
   }
 
-  if (kleidicv_error_t err = yuv_semiplanar_to_rgb_validate(
-          src_y, src_uv, dst, width, height, color_format)) {
+  if (kleidicv_error_t err = yuv420sp_to_rgb_validate(src_y, src_uv, dst, width,
+                                                      height, color_format)) {
     return err;
   }
 

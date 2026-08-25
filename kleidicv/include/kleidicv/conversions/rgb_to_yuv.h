@@ -5,7 +5,7 @@
 #ifndef KLEIDICV_CONVERSIONS_RGB_TO_YUV_H
 #define KLEIDICV_CONVERSIONS_RGB_TO_YUV_H
 
-#include "kleidicv/conversions/yuv420.h"
+#include "kleidicv/conversions/yuv_common.h"
 #include "kleidicv/kleidicv.h"
 
 extern "C" {
@@ -13,7 +13,8 @@ extern "C" {
 // Converts a stripe (range of rows) of an interleaved RGB-family image
 // (RGB, RGBA, BGR, or BGRA) to semi-planar YUV420 (nv12 or nv21).
 // All channels are 8-bit wide. [begin, end) indexes chroma-plane rows.
-// Validate the complete image before invoking this worker.
+// Handle empty images and validate the complete image before invoking this
+// worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420sp_stripe_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *y_dst, size_t y_stride,
                          uint8_t *uv_dst, size_t uv_stride, size_t width,
@@ -25,7 +26,8 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420sp_stripe_u8, const uint8_t *src,
 // Converts a stripe (range of rows) of an interleaved RGB-family image
 // (RGB, RGBA, BGR, or BGRA) to planar YUV420 (I420 or YV12).
 // All channels are 8-bit wide. [begin, end) indexes chroma-plane rows.
-// Validate the complete image before invoking this worker.
+// Handle empty images and validate the complete image before invoking this
+// worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420p_stripe_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
                          size_t width, size_t height,
@@ -35,6 +37,8 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420p_stripe_u8, const uint8_t *src,
 // For internal use only. See instead kleidicv_rgb_to_yuv_u8.
 // Converts an interleaved RGB-family image (RGB, RGBA, BGR, or BGRA)
 // to an interleaved YUV444 image. All channels are 8-bit wide.
+// Handle empty images and validate the complete image before invoking this
+// worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv444_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
                          size_t width, size_t height,
@@ -43,6 +47,8 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv444_u8, const uint8_t *src,
 // For internal use only. See instead kleidicv_rgb_to_yuv_u8.
 // Converts an interleaved RGB-family image (RGB, RGBA, BGR, or BGRA)
 // to an interleaved YUV422 image. All channels are 8-bit wide.
+// Handle empty images and validate the complete image before invoking this
+// worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv422_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
                          size_t width, size_t height,
@@ -51,26 +57,63 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv422_u8, const uint8_t *src,
 
 namespace KLEIDICV_TARGET_NAMESPACE {
 
-inline kleidicv_error_t rgb_to_yuv420p_validate(
-    const uint8_t *src, uint8_t *dst, size_t width, size_t height,
+inline kleidicv_error_t rgb_to_yuv444_validate(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height,
     kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
-  CHECK_POINTERS(src, dst);
-  CHECK_IMAGE_SIZE(width, height);
-  if (!is_yuv420p_format_supported(color_format)) {
+  if (!is_yuv_format_supported<KLEIDICV_COLOR_CONVERSION_FMT_YUV444>(
+          color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
+
+  return unary_operation_validate(src, src_stride, dst, dst_stride, width,
+                                  height);
+}
+
+inline kleidicv_error_t rgb_to_yuv422_validate(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height,
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
+  if (!is_yuv_format_supported<KLEIDICV_COLOR_CONVERSION_FMT_YUV422>(
+          color_format)) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+
+  if (kleidicv_error_t err = unary_operation_validate(
+          src, src_stride, dst, dst_stride, width, height)) {
+    return err;
+  }
+
+  // YUV422 stores pixel pairs, so the width must be at least two and even.
+  if (width < 2 || (width % 2) != 0) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+
   return KLEIDICV_OK;
+}
+
+inline kleidicv_error_t rgb_to_yuv420p_validate(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height,
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
+  if (!is_yuv_format_supported<KLEIDICV_COLOR_CONVERSION_FMT_YUV420P>(
+          color_format)) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+  return unary_operation_validate(src, src_stride, dst, dst_stride, width,
+                                  height);
 }
 
 inline kleidicv_error_t rgb_to_yuv420sp_validate(
     const uint8_t *src, uint8_t *y_dst, uint8_t *uv_dst, size_t width,
     size_t height,
     kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
-  CHECK_POINTERS(src, y_dst, uv_dst);
-  CHECK_IMAGE_SIZE(width, height);
-  if (!is_yuv420sp_format_supported(color_format)) {
+  if (!is_yuv_format_supported<KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP>(
+          color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
+  CHECK_POINTERS(src, y_dst, uv_dst);
+  CHECK_IMAGE_SIZE(width, height);
   return KLEIDICV_OK;
 }
 
