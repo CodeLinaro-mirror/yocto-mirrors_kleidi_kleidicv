@@ -912,14 +912,12 @@ TYPED_TEST(RemapS16Point5, UnsupportedChannels) {
   int16_t mapxy[16] = {};
   uint16_t mapfrac[8] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            remap_s16point5<TypeParam>()(
-                src, 1, 1, 1, dst, 8, 8, 1, 2, mapxy, 4, mapfrac, 2,
-                KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            remap_s16point5<TypeParam>()(
-                src, 1, 1, 1, dst, 8, 8, 1, 3, mapxy, 4, mapfrac, 2,
-                KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+  for (size_t channels : {size_t{0}, size_t{2}, size_t{3}}) {
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              remap_s16point5<TypeParam>()(
+                  src, 1, 1, 1, dst, 8, 8, 1, channels, mapxy, 4, mapfrac, 2,
+                  KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+  }
 }
 
 TYPED_TEST(RemapS16Point5, UnsupportedBorderType) {
@@ -1600,3 +1598,31 @@ TYPED_TEST(RemapF32, Misalignment) {
                                    data_stride_ok, 4, 2, 1, mapx, map_stride_ok,
                                    mapy, map_stride_nok, I, B, nullptr));
 }
+
+namespace {
+
+TEST(RemapValidation, OrdinaryChecksPrecedeCapability) {
+  uint8_t dst = 0;
+  uint8_t border_value = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+            kleidicv_remap_s16_u8(nullptr, 1, 1, 1, &dst, 8, 7, 1, 1, &mapxy,
+                                  sizeof(mapxy), KLEIDICV_BORDER_TYPE_REPLICATE,
+                                  &border_value));
+  EXPECT_EQ(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_remap_s16point5_u8(
+          nullptr, 1, 1, 1, &dst, 8, 7, 1, 1, &mapxy, sizeof(mapxy), &mapfrac,
+          sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE, &border_value));
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+            kleidicv_remap_f32_u8(
+                nullptr, 1, 1, 1, &dst, 4, 3, 1, 1, &mapx, sizeof(mapx), &mapy,
+                sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+                KLEIDICV_BORDER_TYPE_REPLICATE, &border_value));
+}
+
+}  // namespace

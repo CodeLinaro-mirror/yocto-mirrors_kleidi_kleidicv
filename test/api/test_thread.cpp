@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <thread>
 
 #include "framework/array.h"
@@ -958,6 +959,300 @@ TEST(ThreadSeparableFilter2D, NotImplemented) {
   check_separable_filter_2d_not_implemented<uint16_t>(
       kleidicv_thread_separable_filter_2d_u16);
 }
+
+namespace {
+
+using ThreadRemapValidation = test::ThreadValidation;
+
+TEST_F(ThreadRemapValidation, ChecksPrecedeCapability) {
+  uint8_t dst = 0;
+  uint8_t border_value = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_s16_u8(nullptr, 1, 1, 1, &dst, 8, 7, 1,
+                                               1, &mapxy, sizeof(mapxy),
+                                               KLEIDICV_BORDER_TYPE_REPLICATE,
+                                               &border_value, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_s16point5_u8(
+                      nullptr, 1, 1, 1, &dst, 8, 7, 1, 1, &mapxy, sizeof(mapxy),
+                      &mapfrac, sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE,
+                      &border_value, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_remap_f32_u8(
+          nullptr, 1, 1, 1, &dst, 4, 3, 1, 1, &mapx, sizeof(mapx), &mapy,
+          sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+          KLEIDICV_BORDER_TYPE_REPLICATE, &border_value, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_remap_f32_u8(
+          nullptr, 1, size_t{1} << 24, 1, &dst, 4, 4, 1, 1, &mapx, sizeof(mapx),
+          &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+          KLEIDICV_BORDER_TYPE_REPLICATE, &border_value, scheduler()));
+}
+
+TEST_F(ThreadRemapValidation, ZeroChannelsAreUnsupported) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_remap_s16point5_u8(
+                      &src, 1, 1, 1, &dst, 8, 8, 1, 0, &mapxy, sizeof(mapxy),
+                      &mapfrac, sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE,
+                      nullptr, scheduler()));
+}
+
+TEST_F(ThreadRemapValidation, PointersPrecedeCapabilityAndScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  uint8_t border_value = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  auto s16 = [&](const uint8_t *src_ptr, uint8_t *dst_ptr,
+                 const int16_t *mapxy_ptr, const uint8_t *border_ptr) {
+    return kleidicv_thread_remap_s16_u8(
+        src_ptr, 1, 1, 1, dst_ptr, 8, 7, 2, 1, mapxy_ptr, sizeof(mapxy),
+        KLEIDICV_BORDER_TYPE_CONSTANT, border_ptr, scheduler());
+  };
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16(nullptr, &dst, &mapxy, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16(&src, nullptr, &mapxy, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16(&src, &dst, nullptr, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16(&src, &dst, &mapxy, nullptr));
+
+  auto s16point5 = [&](const uint8_t *src_ptr, uint8_t *dst_ptr,
+                       const int16_t *mapxy_ptr, const uint16_t *mapfrac_ptr,
+                       const uint8_t *border_ptr) {
+    return kleidicv_thread_remap_s16point5_u8(
+        src_ptr, 1, 1, 1, dst_ptr, 8, 7, 2, 1, mapxy_ptr, sizeof(mapxy),
+        mapfrac_ptr, sizeof(mapfrac), KLEIDICV_BORDER_TYPE_CONSTANT, border_ptr,
+        scheduler());
+  };
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16point5(nullptr, &dst, &mapxy, &mapfrac, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16point5(&src, nullptr, &mapxy, &mapfrac, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16point5(&src, &dst, nullptr, &mapfrac, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16point5(&src, &dst, &mapxy, nullptr, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  s16point5(&src, &dst, &mapxy, &mapfrac, nullptr));
+
+  auto f32 = [&](const uint8_t *src_ptr, uint8_t *dst_ptr,
+                 const float *mapx_ptr, const float *mapy_ptr,
+                 const uint8_t *border_ptr) {
+    return kleidicv_thread_remap_f32_u8(
+        src_ptr, 1, 1, 1, dst_ptr, 4, 3, 2, 1, mapx_ptr, sizeof(mapx), mapy_ptr,
+        sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+        KLEIDICV_BORDER_TYPE_CONSTANT, border_ptr, scheduler());
+  };
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  f32(nullptr, &dst, &mapx, &mapy, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  f32(&src, nullptr, &mapx, &mapy, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  f32(&src, &dst, nullptr, &mapy, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  f32(&src, &dst, &mapx, nullptr, &border_value));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  f32(&src, &dst, &mapx, &mapy, nullptr));
+}
+
+TEST_F(ThreadRemapValidation, StrideAlignmentPrecedesCapabilityAndScheduling) {
+  uint16_t src = 0;
+  uint16_t dst = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  auto s16 = [&](size_t src_stride, size_t dst_stride, size_t mapxy_stride) {
+    return kleidicv_thread_remap_s16_u16(
+        &src, src_stride, 1, 2, &dst, dst_stride, 7, 2, 1, &mapxy, mapxy_stride,
+        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler());
+  };
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT, s16(1, sizeof(dst), sizeof(mapxy)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT, s16(sizeof(src), 1, sizeof(mapxy)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT, s16(sizeof(src), sizeof(dst), 1));
+
+  auto s16point5 = [&](size_t src_stride, size_t dst_stride,
+                       size_t mapxy_stride, size_t mapfrac_stride) {
+    return kleidicv_thread_remap_s16point5_u16(
+        &src, src_stride, 1, 2, &dst, dst_stride, 7, 2, 1, &mapxy, mapxy_stride,
+        &mapfrac, mapfrac_stride, KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
+        scheduler());
+  };
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  s16point5(1, sizeof(dst), sizeof(mapxy), sizeof(mapfrac)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  s16point5(sizeof(src), 1, sizeof(mapxy), sizeof(mapfrac)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  s16point5(sizeof(src), sizeof(dst), 1, sizeof(mapfrac)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  s16point5(sizeof(src), sizeof(dst), sizeof(mapxy), 1));
+
+  auto f32 = [&](size_t src_stride, size_t dst_stride, size_t mapx_stride,
+                 size_t mapy_stride) {
+    return kleidicv_thread_remap_f32_u16(
+        &src, src_stride, 1, 2, &dst, dst_stride, 3, 2, 1, &mapx, mapx_stride,
+        &mapy, mapy_stride, KLEIDICV_INTERPOLATION_NEAREST,
+        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler());
+  };
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  f32(1, sizeof(dst), sizeof(mapx), sizeof(mapy)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  f32(sizeof(src), 1, sizeof(mapx), sizeof(mapy)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  f32(sizeof(src), sizeof(dst), 1, sizeof(mapy)));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  f32(sizeof(src), sizeof(dst), sizeof(mapx), 1));
+}
+
+TEST_F(ThreadRemapValidation, RejectsFullDestinationGeometryBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_remap_s16_u8(
+          &src, 1, 1, 1, &dst, 1, KLEIDICV_MAX_IMAGE_PIXELS, 2, 1, &mapxy,
+          sizeof(mapxy), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_remap_s16point5_u8(
+          &src, 1, 1, 1, &dst, 1, std::numeric_limits<size_t>::max(), 2, 1,
+          &mapxy, sizeof(mapxy), &mapfrac, sizeof(mapfrac),
+          KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_remap_f32_u8(
+          &src, 1, 1, 1, &dst, 1, KLEIDICV_MAX_IMAGE_PIXELS, 2, 1, &mapx,
+          sizeof(mapx), &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+          KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+}
+
+TEST_F(ThreadRemapValidation, ValidRequestsReachScheduler) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  expect_dispatched(2,
+                    kleidicv_thread_remap_s16_u8(
+                        &src, 1, 1, 1, &dst, 8, 8, 2, 1, &mapxy, sizeof(mapxy),
+                        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_dispatched(
+      2, kleidicv_thread_remap_s16point5_u8(
+             &src, 1, 1, 1, &dst, 8, 8, 2, 1, &mapxy, sizeof(mapxy), &mapfrac,
+             sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
+             scheduler()));
+  expect_dispatched(
+      2, kleidicv_thread_remap_f32_u8(
+             &src, 1, 1, 1, &dst, 4, 4, 2, 1, &mapx, sizeof(mapx), &mapy,
+             sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+             KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+}
+
+TEST_F(ThreadRemapValidation, ZeroHeightBypassesScheduler) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  uint16_t src_u16 = 17;
+  uint16_t dst_u16 = 42;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  expect_no_work(kleidicv_thread_remap_s16_u8(
+      &src, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy),
+      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_no_work(kleidicv_thread_remap_s16point5_u8(
+      &src, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy), &mapfrac,
+      sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_no_work(kleidicv_thread_remap_f32_u8(
+      &src, 1, 1, 1, &dst, 4, 4, 0, 1, &mapx, sizeof(mapx), &mapy, sizeof(mapy),
+      KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
+      scheduler()));
+
+  expect_no_work(kleidicv_thread_remap_s16_u16(
+      &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 8 * sizeof(dst_u16), 8, 0, 1,
+      &mapxy, sizeof(mapxy), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
+      scheduler()));
+  expect_no_work(kleidicv_thread_remap_s16point5_u16(
+      &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 8 * sizeof(dst_u16), 8, 0, 1,
+      &mapxy, sizeof(mapxy), &mapfrac, sizeof(mapfrac),
+      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_no_work(kleidicv_thread_remap_f32_u16(
+      &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 4 * sizeof(dst_u16), 4, 0, 1,
+      &mapx, sizeof(mapx), &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  EXPECT_EQ(42, dst_u16);
+}
+
+TEST_F(ThreadRemapValidation, ZeroHeightStillValidates) {
+  uint8_t dst = 0;
+  uint16_t dst_u16 = 42;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_s16_u8(
+                      nullptr, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy),
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_s16point5_u8(
+                      nullptr, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy),
+                      &mapfrac, sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE,
+                      nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_f32_u8(
+                      nullptr, 1, 1, 1, &dst, 4, 4, 0, 1, &mapx, sizeof(mapx),
+                      &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_s16_u16(
+                      nullptr, sizeof(uint16_t), 1, 1, &dst_u16,
+                      8 * sizeof(dst_u16), 8, 0, 1, &mapxy, sizeof(mapxy),
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_remap_s16point5_u16(
+          nullptr, sizeof(uint16_t), 1, 1, &dst_u16, 8 * sizeof(dst_u16), 8, 0,
+          1, &mapxy, sizeof(mapxy), &mapfrac, sizeof(mapfrac),
+          KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_remap_f32_u16(
+                      nullptr, sizeof(uint16_t), 1, 1, &dst_u16,
+                      4 * sizeof(dst_u16), 4, 0, 1, &mapx, sizeof(mapx), &mapy,
+                      sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  EXPECT_EQ(42, dst_u16);
+}
+
+}  // namespace
 
 TEST_P(Thread, remap_s16_u8_border_replicate) {
   check_remap_s16<uint8_t>(kleidicv_remap_s16_u8, kleidicv_thread_remap_s16_u8,

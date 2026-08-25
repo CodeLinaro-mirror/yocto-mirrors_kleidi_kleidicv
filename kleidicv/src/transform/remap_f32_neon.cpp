@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -188,20 +188,11 @@ kleidicv_error_t remap_f32(const T *src, size_t src_stride, size_t src_width,
                            kleidicv_interpolation_type_t interpolation,
                            kleidicv_border_type_t border_type,
                            const T *border_value) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
-  CHECK_POINTER_AND_STRIDE(mapx, mapx_stride, dst_height);
-  CHECK_POINTER_AND_STRIDE(mapy, mapy_stride, dst_height);
-  CHECK_IMAGE_SIZE(src_width, src_height);
-  CHECK_IMAGE_SIZE(dst_width, dst_height);
-  if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT && nullptr == border_value) {
-    return KLEIDICV_ERROR_NULL_POINTER;
-  }
-
-  if (!remap_f32_is_implemented<T>(src_stride, src_width, src_height, dst_width,
-                                   dst_height, border_type, channels,
-                                   interpolation)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err = remap_f32_validate(
+          src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
+          dst_height, channels, mapx, mapx_stride, mapy, mapy_stride,
+          interpolation, border_type, border_value)) {
+    return err;
   }
 
   Rows<const T> src_rows{src, src_stride, channels};
