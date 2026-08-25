@@ -410,6 +410,16 @@ std::enable_if_t<alignof(T) == 1, kleidicv_error_t> check_pointer_and_stride(
     }                                                            \
   } while (false)
 
+#define CHECK_ALIGNMENT(ElementType, pointer)                    \
+  do {                                                           \
+    if constexpr (alignof(ElementType) > 1) {                    \
+      if (KLEIDICV_TARGET_NAMESPACE::is_misaligned<ElementType>( \
+              reinterpret_cast<uintptr_t>(pointer))) {           \
+        return KLEIDICV_ERROR_ALIGNMENT;                         \
+      }                                                          \
+    }                                                            \
+  } while (false)
+
 #define MAKE_POINTER_CHECK_ALIGNMENT(ElementType, name, from)  \
   if constexpr (alignof(ElementType) > 1) {                    \
     if (KLEIDICV_TARGET_NAMESPACE::is_misaligned<ElementType>( \

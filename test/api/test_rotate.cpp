@@ -4,8 +4,13 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+
 #include "framework/array.h"
 #include "framework/generator.h"
+#include "kleidicv/config.h"
 #include "kleidicv/kleidicv.h"
 
 class Rotate : public testing::TestWithParam<size_t> {
@@ -149,14 +154,21 @@ TEST_P(Rotate, NullPointer) {
 TEST_P(Rotate, ZeroImageSize) {
   std::vector<uint8_t> src(1, 0);
   std::vector<uint8_t> dst(1, 0);
-  size_t element_size = GetParam();
-  for (int angle : {90, -90}) {
-    EXPECT_EQ(KLEIDICV_OK,
-              kleidicv_rotate(src.data(), element_size, 0, 1, dst.data(),
-                              element_size, angle, element_size));
-    EXPECT_EQ(KLEIDICV_OK,
-              kleidicv_rotate(src.data(), element_size, 1, 0, dst.data(),
-                              element_size, angle, element_size));
+  const size_t element_size = GetParam();
+  for (auto function : {kleidicv_rotate, kleidicv_rotate_sme}) {
+    for (int angle : {90, -90}) {
+      for (size_t extent : {size_t{1}, size_t{128}}) {
+        EXPECT_EQ(KLEIDICV_OK,
+                  function(src.data(), element_size, 0, extent, dst.data(),
+                           element_size, angle, element_size));
+        EXPECT_EQ(KLEIDICV_OK,
+                  function(src.data(), element_size, extent, 0, dst.data(),
+                           element_size, angle, element_size));
+      }
+      EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+                function(nullptr, element_size, 0, 0, dst.data(), element_size,
+                         angle, element_size));
+    }
   }
 }
 
@@ -255,3 +267,22 @@ TEST(RotateNotImplemented, ElementSize) {
             kleidicv_rotate(source.data(), stride, width, height, dst.data(),
                             stride, angle, element_size));
 }
+
+namespace {
+
+TEST(RotateValidation, ErrorPrecedence) {
+  uint8_t dst = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+  alignas(uint16_t) std::array<uint8_t, 4> misaligned_storage{};
+  void *misaligned_dst = misaligned_storage.data() + 1;
+
+  for (auto function : {kleidicv_rotate, kleidicv_rotate_sme}) {
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              function(nullptr, 1, kLargeWidth, 2, &dst, 1, 90, 1));
+    EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT,
+              function(nullptr, sizeof(uint16_t), 1, 1, misaligned_dst,
+                       sizeof(uint16_t), 90, sizeof(uint16_t)));
+  }
+}
+
+}  // namespace

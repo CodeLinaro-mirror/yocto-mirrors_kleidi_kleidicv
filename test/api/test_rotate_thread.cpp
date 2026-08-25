@@ -5,13 +5,17 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <thread>
 
 #include "framework/array.h"
 #include "framework/generator.h"
+#include "kleidicv/config.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "thread_validation.h"
 
 class RotateThread : public testing::TestWithParam<size_t> {
  public:
@@ -147,3 +151,54 @@ TEST(RotateThreadNotImplemented, ElementSize) {
                                    dst.data(), stride, angle, element_size,
                                    get_multithreading_fake(thread_count)));
 }
+
+namespace {
+
+using ThreadRotateValidation = test::ThreadValidation;
+
+TEST_F(ThreadRotateValidation, RejectsCompleteRequestsBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_rotate(nullptr, 1, kLargeWidth, 2, &dst, 1,
+                                         90, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_rotate(nullptr, 1, kLargeWidth, 2, &dst, 1,
+                                         180, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_rotate(&src, 1, 1, 1, &src, 1, 90, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_rotate(&src, 1, kLargeWidth, 2, &dst, 1, 90,
+                                         1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_rotate(nullptr, 1, 0, 0, &dst, 1, 90, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_rotate(&src, 1, 0, 0, &src, 1, 90, 1, scheduler()));
+}
+
+TEST_F(ThreadRotateValidation, ValidRequestsReachTheScheduler) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_dispatched(
+      2, kleidicv_thread_rotate(&src, 1, 128, 1, &dst, 1, 270, 1, scheduler()));
+}
+
+TEST_F(ThreadRotateValidation, EmptyOutOfPlaceRequestsBypassTheScheduler) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_no_work(
+      kleidicv_thread_rotate(&src, 1, 0, 128, &dst, 1, 90, 1, scheduler()));
+  expect_no_work(
+      kleidicv_thread_rotate(&src, 1, 128, 0, &dst, 1, -90, 1, scheduler()));
+  expect_no_work(
+      kleidicv_thread_rotate(&src, 1, 0, 0, &dst, 1, 90, 1, scheduler()));
+}
+
+}  // namespace

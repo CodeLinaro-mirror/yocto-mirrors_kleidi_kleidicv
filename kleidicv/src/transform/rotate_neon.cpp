@@ -98,11 +98,8 @@ template <typename T, bool k3Channels = false>
 static kleidicv_error_t rotate(const void *src_void, size_t src_stride,
                                size_t src_width, size_t src_height,
                                void *dst_void, size_t dst_stride, int angle) {
-  MAKE_POINTER_CHECK_ALIGNMENT(const T, src, src_void);
-  MAKE_POINTER_CHECK_ALIGNMENT(T, dst, dst_void);
-  CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, src_width);
-  CHECK_IMAGE_SIZE(src_width, src_height);
+  const auto *src = reinterpret_cast<const T *>(src_void);
+  auto *dst = reinterpret_cast<T *>(dst_void);
 
   Rectangle rect{src_width, src_height};
   Rows<T> dst_rows{dst, dst_stride, k3Channels ? 3 : 1};
@@ -118,8 +115,13 @@ KLEIDICV_TARGET_FN_ATTRS
 kleidicv_error_t rotate(const void *src, size_t src_stride, size_t src_width,
                         size_t src_height, void *dst, size_t dst_stride,
                         int angle, size_t pixel_size) {
-  if (!rotate_is_implemented(src, dst, angle, pixel_size)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err =
+          rotate_validate(src, src_stride, src_width, src_height, dst,
+                          dst_stride, angle, pixel_size)) {
+    return err;
+  }
+  if (src_width == 0 || src_height == 0) {
+    return KLEIDICV_OK;
   }
 
   switch (pixel_size) {

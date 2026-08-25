@@ -4,10 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "framework/array.h"
 #include "framework/generator.h"
+#include "kleidicv/config.h"
 #include "kleidicv/kleidicv.h"
 
 class Transpose : public testing::TestWithParam<size_t> {
@@ -277,13 +281,18 @@ TEST_P(Transpose, Misalignment) {
 TEST_P(Transpose, ZeroImageSize) {
   std::vector<uint8_t> src(1, 0);
   std::vector<uint8_t> dst(1, 0);
-  size_t element_size = GetParam();
-  EXPECT_EQ(KLEIDICV_OK,
-            kleidicv_transpose(src.data(), element_size, dst.data(),
-                               element_size, 0, 1, element_size));
-  EXPECT_EQ(KLEIDICV_OK,
-            kleidicv_transpose(src.data(), element_size, dst.data(),
-                               element_size, 1, 0, element_size));
+  const size_t element_size = GetParam();
+  for (auto function : {kleidicv_transpose, kleidicv_transpose_sme}) {
+    for (size_t extent : {size_t{1}, size_t{128}}) {
+      EXPECT_EQ(KLEIDICV_OK, function(src.data(), element_size, dst.data(),
+                                      element_size, 0, extent, element_size));
+      EXPECT_EQ(KLEIDICV_OK, function(src.data(), element_size, dst.data(),
+                                      element_size, extent, 0, element_size));
+    }
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              function(nullptr, element_size, dst.data(), element_size, 0, 0,
+                       element_size));
+  }
 }
 
 TEST_P(Transpose, OversizeImage) {
@@ -302,3 +311,25 @@ TEST_P(Transpose, OversizeImage) {
 
 INSTANTIATE_TEST_SUITE_P(, Transpose, testing::Values(1, 2, 3, 4, 6, 8),
                          testing::PrintToStringParamName());
+
+namespace {
+
+TEST(TransposeValidation, ErrorPrecedence) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+  alignas(uint16_t) std::array<uint8_t, 4> misaligned_storage{};
+  void *misaligned_dst = misaligned_storage.data() + 1;
+
+  for (auto function : {kleidicv_transpose, kleidicv_transpose_sme}) {
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              function(&src, 1, &dst, 1, kLargeWidth, 2, 16));
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              function(nullptr, 1, &dst, 1, kLargeWidth, 2, 1));
+    EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT,
+              function(nullptr, sizeof(uint16_t), misaligned_dst,
+                       sizeof(uint16_t), 1, 1, sizeof(uint16_t)));
+  }
+}
+
+}  // namespace

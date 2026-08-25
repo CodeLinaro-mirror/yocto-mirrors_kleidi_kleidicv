@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <random>
 #include <thread>
@@ -14,9 +15,11 @@
 
 #include "framework/array.h"
 #include "framework/generator.h"
+#include "kleidicv/config.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "thread_validation.h"
 
 class TransposeThread : public testing::TestWithParam<size_t> {
  public:
@@ -137,3 +140,70 @@ TEST(TransposeThreadInPlace, Square) {
                              sizeof(uint8_t), get_multithreading_fake(2)));
   EXPECT_THAT(data, testing::ElementsAreArray(expected));
 }
+
+namespace {
+
+using ThreadTransposeValidation = test::ThreadValidation;
+
+TEST_F(ThreadTransposeValidation, RejectsCompleteRequestsBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  uint16_t src_u16 = 0;
+  uint16_t dst_u16 = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_transpose(nullptr, 1, &dst, 1, kLargeWidth, 2,
+                                            1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_transpose(&src, 1, &dst, 1, kLargeWidth, 2,
+                                            16, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_transpose(&src, 1, &src, 1, kLargeWidth, 2,
+                                            16, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_transpose(&src, 1, &src, 1, kLargeWidth,
+                                            kLargeWidth, 16, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_transpose(&src, 1, &src, 1, kLargeWidth, 2, 1,
+                                            scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_ALIGNMENT,
+      kleidicv_thread_transpose(&src_u16, 1, &dst_u16, sizeof(uint16_t), 2, 2,
+                                sizeof(uint16_t), scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_transpose(nullptr, 1, &dst, 1, 0, 0, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_transpose(&src, 1, &src, 1, 0, 1, 1, scheduler()));
+}
+
+TEST_F(ThreadTransposeValidation, ValidRequestsReachTheScheduler) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_dispatched(
+      2, kleidicv_thread_transpose(&src, 1, &dst, 1, 128, 1, 1, scheduler()));
+}
+
+TEST_F(ThreadTransposeValidation, EmptyOutOfPlaceRequestsBypassTheScheduler) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_no_work(
+      kleidicv_thread_transpose(&src, 1, &dst, 1, 0, 128, 1, scheduler()));
+  expect_no_work(
+      kleidicv_thread_transpose(&src, 1, &dst, 1, 128, 0, 1, scheduler()));
+  expect_no_work(
+      kleidicv_thread_transpose(&src, 1, &dst, 1, 0, 0, 1, scheduler()));
+}
+
+TEST_F(ThreadTransposeValidation, EmptyInPlaceBypassesTheScheduler) {
+  uint8_t data = 0;
+
+  expect_no_work(
+      kleidicv_thread_transpose(&data, 1, &data, 1, 0, 0, 1, scheduler()));
+}
+
+}  // namespace
