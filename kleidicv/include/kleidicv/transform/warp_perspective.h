@@ -5,10 +5,10 @@
 #ifndef KLEIDICV_TRANSFORM_WARP_PERSPECTIVE_H
 #define KLEIDICV_TRANSFORM_WARP_PERSPECTIVE_H
 
-#include <limits>
 #include <type_traits>
 
 #include "kleidicv/ctypes.h"
+#include "kleidicv/utils.h"
 
 extern "C" {
 // For internal use only. See kleidicv_warp_perspective_u8 instead.
@@ -27,20 +27,54 @@ KLEIDICV_API_DECLARATION(kleidicv_warp_perspective_stripe_u8,
 namespace kleidicv {
 
 template <typename T>
-inline bool warp_perspective_is_implemented(
-    size_t dst_width, size_t channels,
+inline kleidicv_error_t warp_perspective_validate(
+    const T *src, size_t src_stride, size_t src_width, size_t src_height,
+    T *dst, size_t dst_stride, size_t dst_width, size_t dst_height,
+    const float transformation[9], size_t channels,
     kleidicv_interpolation_type_t interpolation,
-    kleidicv_border_type_t border_type) KLEIDICV_STREAMING {
-  if constexpr (std::is_same<T, uint8_t>::value) {
-    return (dst_width >= 8 &&
-            (interpolation == KLEIDICV_INTERPOLATION_NEAREST ||
-             interpolation == KLEIDICV_INTERPOLATION_LINEAR) &&
-            (border_type == KLEIDICV_BORDER_TYPE_REPLICATE ||
-             border_type == KLEIDICV_BORDER_TYPE_CONSTANT) &&
-            channels == 1);
-  } else {
-    return false;
+    kleidicv_border_type_t border_type, const T *border_value) {
+  if constexpr (!std::is_same<T, uint8_t>::value) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
+
+  if (dst_width < 8 ||
+      (interpolation != KLEIDICV_INTERPOLATION_NEAREST &&
+       interpolation != KLEIDICV_INTERPOLATION_LINEAR) ||
+      (border_type != KLEIDICV_BORDER_TYPE_REPLICATE &&
+       border_type != KLEIDICV_BORDER_TYPE_CONSTANT) ||
+      channels != 1) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+
+  if (kleidicv_error_t err =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
+                                                              src_height)) {
+    return err;
+  }
+  if (kleidicv_error_t err =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
+                                                              dst_height)) {
+    return err;
+  }
+  if (transformation == nullptr) {
+    return KLEIDICV_ERROR_NULL_POINTER;
+  }
+
+  if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT && border_value == nullptr) {
+    return KLEIDICV_ERROR_NULL_POINTER;
+  }
+
+  // Calculating in float32_t will only be precise until 24 bits, and
+  // multiplication can only be done with 32x32 bits. Empty source images are
+  // not supported. These dimension limits also bound the pixel count below
+  // KLEIDICV_MAX_IMAGE_PIXELS.
+  if (src_width >= (1ULL << 24) || src_height >= (1ULL << 24) ||
+      dst_width >= (1ULL << 24) || dst_height >= (1ULL << 24) ||
+      src_stride >= (1ULL << 32) || src_width == 0 || src_height == 0) {
+    return KLEIDICV_ERROR_RANGE;
+  }
+
+  return KLEIDICV_OK;
 }
 
 namespace neon {

@@ -16,6 +16,7 @@
 #include "kleidicv/ctypes.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/transform/warp_perspective.h"
+#include "thread_validation.h"
 
 // clang-format off
 static const float transform_identity[] = {
@@ -86,8 +87,15 @@ static const auto &get_borders() {
 }
 
 template <class ScalarType, kleidicv_interpolation_type_t Interpolation>
-class WarpPerspectiveBase : public testing::Test {
+class WarpPerspectiveBase : public test::ThreadValidation {
  public:
+  template <typename... Args>
+  void expect_invalid(kleidicv_error_t expected, Args... args) {
+    EXPECT_EQ(expected, kleidicv_warp_perspective_u8(args...));
+    this->expect_rejected(expected, kleidicv_thread_warp_perspective_u8(
+                                        args..., this->scheduler()));
+  }
+
   static void test_stripe(size_t src_w, size_t src_h, size_t dst_w,
                           size_t dst_h, size_t y_begin, size_t y_end,
                           const float transform[9], size_t channels,
@@ -113,6 +121,12 @@ class WarpPerspectiveBase : public testing::Test {
     calculate_expected(source, y_begin, y_end, transform, border_type,
                        border_value, expected);
 
+    ASSERT_EQ(
+        KLEIDICV_OK,
+        kleidicv::warp_perspective_validate<ScalarType>(
+            source.data(), source.stride(), source.width(), source.height(),
+            actual.data(), actual.stride(), actual.width(), actual.height(),
+            transform, channels, Interpolation, border_type, border_value));
     ASSERT_EQ(KLEIDICV_OK,
               kleidicv_warp_perspective_stripe_u8(
                   source.data(), source.stride(), source.width(),
@@ -632,67 +646,69 @@ TYPED_TEST(WarpPerspectiveNearest, NullPointer) {
   const TypeParam src[4] = {};
   const TypeParam border_value[KLEIDICV_MAXIMUM_CHANNEL_COUNT] = {};
   TypeParam dst[8];
-  test::test_null_args(kleidicv_warp_perspective_u8, src, 2, 2, 2, dst, 8, 8, 1,
-                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
-                       KLEIDICV_BORDER_TYPE_CONSTANT, border_value);
+  auto expect_null = [&](const TypeParam *source, TypeParam *destination,
+                         const float *transformation, const TypeParam *border) {
+    this->expect_invalid(KLEIDICV_ERROR_NULL_POINTER, source, 2, 2, 2,
+                         destination, 8, 8, 1, transformation, 1,
+                         KLEIDICV_INTERPOLATION_NEAREST,
+                         KLEIDICV_BORDER_TYPE_CONSTANT, border);
+  };
+  expect_null(nullptr, dst, transform_identity, border_value);
+  expect_null(src, nullptr, transform_identity, border_value);
+  expect_null(src, dst, nullptr, border_value);
+  expect_null(src, dst, transform_identity, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, ZeroImageSize) {
   const TypeParam src[1] = {};
   TypeParam dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            kleidicv_warp_perspective_u8(
-                src, 1, 0, 1, dst, 1, 0, 1, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 0, dst, 1, 1, 0, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 0, 1, dst, 1, 0,
+                       1, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
+  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 1, 0, dst, 1, 1,
+                       0, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 0, 1, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 0, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, InvalidImageSize) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, KLEIDICV_MAX_IMAGE_PIXELS + 1, 1, dst, 8, 8, 1,
-                transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
-                KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS + 1, 1, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 
-  EXPECT_EQ(
-      KLEIDICV_ERROR_RANGE,
-      kleidicv_warp_perspective_u8(
-          src, 1, KLEIDICV_MAX_IMAGE_PIXELS, KLEIDICV_MAX_IMAGE_PIXELS, dst, 8,
-          8, 1, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
-          KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, KLEIDICV_MAX_IMAGE_PIXELS,
+                       KLEIDICV_MAX_IMAGE_PIXELS, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 1, KLEIDICV_MAX_IMAGE_PIXELS + 1, 1,
-                transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
-                KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 1, dst, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS + 1, 1, transform_identity, 1,
+                       KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 1, KLEIDICV_MAX_IMAGE_PIXELS,
-                KLEIDICV_MAX_IMAGE_PIXELS, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 1, dst, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, KLEIDICV_MAX_IMAGE_PIXELS,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedTwoChannels) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 8, 8, 1, transform_identity, 2,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 1, 1, dst, 8, 8,
+                       1, transform_identity, 2, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedBorderType) {
@@ -700,77 +716,96 @@ TYPED_TEST(WarpPerspectiveNearest, UnsupportedBorderType) {
   const TypeParam border_value[KLEIDICV_MAXIMUM_CHANNEL_COUNT] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 8, 8, 1, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REFLECT,
-                border_value));
+  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 1, 1, dst, 8, 8,
+                       1, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REFLECT, border_value);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedTooSmallImage) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 8, 7, 1, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 1, 1, dst, 8, 7,
+                       1, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedBigStride) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1UL << 32, 1, 1, dst, 8, 8, 1, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1UL << 32, 1, 1, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedBigSourceHeight) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1UL << 24, dst, 8, 8, 1, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 1UL << 24, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedBigSourceWidth) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1UL << 24, 1, dst, 8, 8, 1, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1UL << 24, 1, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedBigDestinationHeight) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 8, 8, 1UL << 24, transform_identity, 1,
-                KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
-                nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 1, dst, 8, 8, 1UL << 24,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
 }
 
 TYPED_TEST(WarpPerspectiveNearest, UnsupportedBigDestinationWidth) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
-            kleidicv_warp_perspective_u8(
-                src, 1, 1, 1, dst, 1UL << 24, 1UL << 24, 1, transform_identity,
-                1, KLEIDICV_INTERPOLATION_NEAREST,
-                KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 1, dst, 1UL << 24,
+                       1UL << 24, 1, transform_identity, 1,
+                       KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
+}
+
+TYPED_TEST(WarpPerspectiveNearest, ErrorPrecedence) {
+  const TypeParam src[1] = {};
+  TypeParam dst[8];
+
+  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, nullptr, 1, 1, 1, dst, 8,
+                       7, 1, nullptr, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_CONSTANT, nullptr);
+  this->expect_invalid(KLEIDICV_ERROR_NULL_POINTER, src, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, 2, dst, 8, 8, 1, nullptr, 1,
+                       KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
+  this->expect_invalid(KLEIDICV_ERROR_NULL_POINTER, src, size_t{1} << 32, 1, 1,
+                       dst, 8, 8, 1, transform_identity, 1,
+                       KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_CONSTANT, nullptr);
+  this->expect_invalid(KLEIDICV_ERROR_NULL_POINTER, src, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, 2, dst, 8, 8, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+                       KLEIDICV_BORDER_TYPE_CONSTANT, nullptr);
+}
+
+TYPED_TEST(WarpPerspectiveNearest, SchedulerResult) {
+  const TypeParam src[1] = {};
+  TypeParam dst[8];
+
+  this->expect_dispatched(
+      1, kleidicv_thread_warp_perspective_u8(
+             src, 1, 1, 1, dst, 8, 8, 1, transform_identity, 1,
+             KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE,
+             nullptr, this->scheduler()));
 }
 
 /////////////////////////////////////////////////////////////

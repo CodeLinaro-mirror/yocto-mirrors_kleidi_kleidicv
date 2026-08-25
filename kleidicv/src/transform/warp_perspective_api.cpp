@@ -20,9 +20,11 @@ kleidicv_error_t kleidicv_warp_perspective_u8(
     const float transformation[9], size_t channels,
     kleidicv_interpolation_type_t interpolation,
     kleidicv_border_type_t border_type, const uint8_t *border_value) {
-  if (!kleidicv::warp_perspective_is_implemented<uint8_t>(
-          dst_width, channels, interpolation, border_type)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err = kleidicv::warp_perspective_validate<uint8_t>(
+          src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
+          dst_height, transformation, channels, interpolation, border_type,
+          border_value)) {
+    return err;
   }
 
   return kleidicv_warp_perspective_stripe_u8(

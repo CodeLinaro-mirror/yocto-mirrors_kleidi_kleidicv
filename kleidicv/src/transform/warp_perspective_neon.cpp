@@ -158,29 +158,10 @@ void transform_operation(Rows<const ScalarType> src_rows, size_t src_width,
 template <typename T>
 kleidicv_error_t warp_perspective_stripe(
     const T *src, size_t src_stride, size_t src_width, size_t src_height,
-    T *dst, size_t dst_stride, size_t dst_width, size_t dst_height,
+    T *dst, size_t dst_stride, size_t dst_width, size_t /*dst_height*/,
     size_t y_begin, size_t y_end, const float transformation[9],
     size_t channels, kleidicv_interpolation_type_t interpolation,
     kleidicv_border_type_t border_type, const T *border_value) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
-  CHECK_POINTERS(transformation);
-  CHECK_IMAGE_SIZE(src_width, src_height);
-  CHECK_IMAGE_SIZE(dst_width, dst_height);
-
-  if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT && nullptr == border_value) {
-    return KLEIDICV_ERROR_NULL_POINTER;
-  }
-
-  // Calculating in float32_t will only be precise until 24 bits, and
-  // multiplication can only be done with 32x32 bits
-  // Empty source image is not supported
-  if (src_width >= (1ULL << 24) || src_height >= (1ULL << 24) ||
-      dst_width >= (1ULL << 24) || dst_height >= (1ULL << 24) ||
-      src_stride >= (1ULL << 32) || src_width == 0 || src_height == 0) {
-    return KLEIDICV_ERROR_RANGE;
-  }
-
   Rows<const T> src_rows{src, src_stride, channels};
   Rows<T> dst_rows{dst, dst_stride, channels};
   dst_rows += y_begin;
