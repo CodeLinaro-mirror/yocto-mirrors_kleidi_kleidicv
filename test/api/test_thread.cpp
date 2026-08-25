@@ -492,6 +492,211 @@ TEST_BINARY_OP(compare_equal_u8, uint8_t, 1, 1);
 TEST_BINARY_OP(compare_greater_u8, uint8_t, 1, 1);
 TEST_BINARY_OP(saturating_add_abs_with_threshold_s16, int16_t, 1, 1, 123);
 
+namespace {
+
+using ThreadBinaryValidation = test::ThreadValidation;
+
+TEST_F(ThreadBinaryValidation, NullSourcesReturnBeforeScheduling) {
+  int8_t s8 = 0;
+  uint8_t u8 = 0;
+  int16_t s16 = 0;
+  uint16_t u16 = 0;
+  int32_t s32 = 0;
+  uint32_t u32 = 0;
+  int64_t s64 = 0;
+  uint64_t u64 = 0;
+
+#define EXPECT_NULL(call) expect_rejected(KLEIDICV_ERROR_NULL_POINTER, call)
+
+  EXPECT_NULL(kleidicv_thread_saturating_add_s8(nullptr, sizeof(s8), &s8,
+                                                sizeof(s8), &s8, sizeof(s8), 1,
+                                                2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_u8(nullptr, sizeof(u8), &u8,
+                                                sizeof(u8), &u8, sizeof(u8), 1,
+                                                2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_s16(nullptr, sizeof(s16), &s16,
+                                                 sizeof(s16), &s16, sizeof(s16),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_u16(nullptr, sizeof(u16), &u16,
+                                                 sizeof(u16), &u16, sizeof(u16),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_s32(nullptr, sizeof(s32), &s32,
+                                                 sizeof(s32), &s32, sizeof(s32),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_u32(nullptr, sizeof(u32), &u32,
+                                                 sizeof(u32), &u32, sizeof(u32),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_s64(nullptr, sizeof(s64), &s64,
+                                                 sizeof(s64), &s64, sizeof(s64),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_u64(nullptr, sizeof(u64), &u64,
+                                                 sizeof(u64), &u64, sizeof(u64),
+                                                 1, 2, scheduler()));
+
+  EXPECT_NULL(kleidicv_thread_saturating_sub_s8(nullptr, sizeof(s8), &s8,
+                                                sizeof(s8), &s8, sizeof(s8), 1,
+                                                2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_u8(nullptr, sizeof(u8), &u8,
+                                                sizeof(u8), &u8, sizeof(u8), 1,
+                                                2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_s16(nullptr, sizeof(s16), &s16,
+                                                 sizeof(s16), &s16, sizeof(s16),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_u16(nullptr, sizeof(u16), &u16,
+                                                 sizeof(u16), &u16, sizeof(u16),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_s32(nullptr, sizeof(s32), &s32,
+                                                 sizeof(s32), &s32, sizeof(s32),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_u32(nullptr, sizeof(u32), &u32,
+                                                 sizeof(u32), &u32, sizeof(u32),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_s64(nullptr, sizeof(s64), &s64,
+                                                 sizeof(s64), &s64, sizeof(s64),
+                                                 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_sub_u64(nullptr, sizeof(u64), &u64,
+                                                 sizeof(u64), &u64, sizeof(u64),
+                                                 1, 2, scheduler()));
+
+  EXPECT_NULL(kleidicv_thread_saturating_absdiff_u8(nullptr, sizeof(u8), &u8,
+                                                    sizeof(u8), &u8, sizeof(u8),
+                                                    1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_absdiff_s8(nullptr, sizeof(s8), &s8,
+                                                    sizeof(s8), &s8, sizeof(s8),
+                                                    1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_absdiff_u16(
+      nullptr, sizeof(u16), &u16, sizeof(u16), &u16, sizeof(u16), 1, 2,
+      scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_absdiff_s16(
+      nullptr, sizeof(s16), &s16, sizeof(s16), &s16, sizeof(s16), 1, 2,
+      scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_absdiff_s32(
+      nullptr, sizeof(s32), &s32, sizeof(s32), &s32, sizeof(s32), 1, 2,
+      scheduler()));
+
+  EXPECT_NULL(kleidicv_thread_saturating_multiply_u8(
+      nullptr, sizeof(u8), &u8, sizeof(u8), &u8, sizeof(u8), 1, 2, 1.0,
+      scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_multiply_s8(
+      nullptr, sizeof(s8), &s8, sizeof(s8), &s8, sizeof(s8), 1, 2, 1.0,
+      scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_multiply_u16(
+      nullptr, sizeof(u16), &u16, sizeof(u16), &u16, sizeof(u16), 1, 2, 1.0,
+      scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_multiply_s16(
+      nullptr, sizeof(s16), &s16, sizeof(s16), &s16, sizeof(s16), 1, 2, 1.0,
+      scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_multiply_s32(
+      nullptr, sizeof(s32), &s32, sizeof(s32), &s32, sizeof(s32), 1, 2, 1.0,
+      scheduler()));
+
+  EXPECT_NULL(kleidicv_thread_bitwise_and(nullptr, sizeof(u8), &u8, sizeof(u8),
+                                          &u8, sizeof(u8), 1, 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_compare_equal_u8(nullptr, sizeof(u8), &u8,
+                                               sizeof(u8), &u8, sizeof(u8), 1,
+                                               2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_compare_greater_u8(nullptr, sizeof(u8), &u8,
+                                                 sizeof(u8), &u8, sizeof(u8), 1,
+                                                 2, scheduler()));
+  EXPECT_NULL(kleidicv_thread_saturating_add_abs_with_threshold_s16(
+      nullptr, sizeof(s16), &s16, sizeof(s16), &s16, sizeof(s16), 1, 2, 0,
+      scheduler()));
+
+#undef EXPECT_NULL
+}
+
+TEST_F(ThreadBinaryValidation, PointerAndAlignmentPrecedence) {
+  int16_t src_a = 0;
+  int16_t src_b = 0;
+  int16_t dst = 0;
+
+  expect_rejected(
+      KLEIDICV_ERROR_ALIGNMENT,
+      kleidicv_thread_saturating_add_s16(&src_a, 1, nullptr, sizeof(src_b),
+                                         &dst, sizeof(dst), 1, 2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_saturating_add_s16(
+                      &src_a, sizeof(src_a), nullptr, sizeof(src_b), &dst,
+                      sizeof(dst), 1, 2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_saturating_add_s16(
+                      &src_a, sizeof(src_a), &src_b, 1, nullptr, sizeof(dst), 1,
+                      2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_saturating_add_s16(
+                      &src_a, sizeof(src_a), &src_b, sizeof(src_b), nullptr,
+                      sizeof(dst), 1, 2, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_saturating_add_s16(
+                      &src_a, sizeof(src_a), &src_b, sizeof(src_b), &dst, 1, 1,
+                      2, scheduler()));
+
+  expect_dispatched(2, kleidicv_thread_saturating_add_s16(
+                           &src_a, sizeof(src_a), &src_b, sizeof(src_b), &dst,
+                           sizeof(dst), 1, 2, scheduler()));
+  expect_dispatched(2, kleidicv_thread_saturating_multiply_s16(
+                           &src_a, sizeof(src_a), &src_b, sizeof(src_b), &dst,
+                           sizeof(dst), 1, 2, 1.0, scheduler()));
+  expect_dispatched(2, kleidicv_thread_saturating_add_abs_with_threshold_s16(
+                           &src_a, sizeof(src_a), &src_b, sizeof(src_b), &dst,
+                           sizeof(dst), 1, 2, 0, scheduler()));
+}
+
+TEST_F(ThreadBinaryValidation, FullImageSizeReturnsBeforeScheduling) {
+  int8_t s8 = 0;
+  uint8_t u8 = 0;
+  int16_t s16 = 0;
+  uint16_t u16 = 0;
+  int32_t s32 = 0;
+  uint64_t u64 = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+#define EXPECT_RANGE(call) expect_rejected(KLEIDICV_ERROR_RANGE, call)
+
+  EXPECT_RANGE(kleidicv_thread_saturating_add_s8(&s8, sizeof(s8), &s8,
+                                                 sizeof(s8), &s8, sizeof(s8),
+                                                 kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_saturating_sub_u64(
+      &u64, sizeof(u64), &u64, sizeof(u64), &u64, sizeof(u64), kLargeWidth, 2,
+      scheduler()));
+  EXPECT_RANGE(kleidicv_thread_saturating_absdiff_u16(
+      &u16, sizeof(u16), &u16, sizeof(u16), &u16, sizeof(u16), kLargeWidth, 2,
+      scheduler()));
+  EXPECT_RANGE(kleidicv_thread_saturating_multiply_s32(
+      &s32, sizeof(s32), &s32, sizeof(s32), &s32, sizeof(s32), kLargeWidth, 2,
+      1.0, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_bitwise_and(&u8, sizeof(u8), &u8, sizeof(u8),
+                                           &u8, sizeof(u8), kLargeWidth, 2,
+                                           scheduler()));
+  EXPECT_RANGE(kleidicv_thread_compare_equal_u8(&u8, sizeof(u8), &u8,
+                                                sizeof(u8), &u8, sizeof(u8),
+                                                kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_compare_greater_u8(&u8, sizeof(u8), &u8,
+                                                  sizeof(u8), &u8, sizeof(u8),
+                                                  kLargeWidth, 2, scheduler()));
+  EXPECT_RANGE(kleidicv_thread_saturating_add_abs_with_threshold_s16(
+      &s16, sizeof(s16), &s16, sizeof(s16), &s16, sizeof(s16), kLargeWidth, 2,
+      0, scheduler()));
+
+#undef EXPECT_RANGE
+}
+
+TEST_F(ThreadBinaryValidation, EmptyImagePreservesSchedulerBehavior) {
+  uint8_t src_a = 0;
+  uint8_t src_b = 0;
+  uint8_t dst = 0;
+
+  expect_dispatched(1, kleidicv_thread_bitwise_and(
+                           &src_a, sizeof(src_a), &src_b, sizeof(src_b), &dst,
+                           sizeof(dst), 1, 0, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_bitwise_and(nullptr, sizeof(src_a), &src_b, sizeof(src_b),
+                                  &dst, sizeof(dst), 1, 0, scheduler()));
+}
+
+}  // namespace
+
 TEST_P(Thread, gaussian_blur_fixed_u8) {
   unsigned width = 0, height = 0, thread_count = 0;
   std::tie(width, height, thread_count) = GetParam();

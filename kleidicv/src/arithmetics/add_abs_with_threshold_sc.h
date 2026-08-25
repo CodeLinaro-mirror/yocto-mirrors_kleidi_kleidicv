@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/sve2.h"
 
 namespace KLEIDICV_TARGET_NAMESPACE {
@@ -39,10 +40,11 @@ kleidicv_error_t saturating_add_abs_with_threshold_sc(
     const T *src_a, size_t src_a_stride, const T *src_b, size_t src_b_stride,
     T *dst, size_t dst_stride, size_t width, size_t height,
     T threshold) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src_a, src_a_stride, height);
-  CHECK_POINTER_AND_STRIDE(src_b, src_b_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err =
+          binary_operation_validate(src_a, src_a_stride, src_b, src_b_stride,
+                                    dst, dst_stride, width, height)) {
+    return err;
+  }
 
   SaturatingAddAbsWithThreshold<T> operation{threshold};
   Rectangle rect{width, height};

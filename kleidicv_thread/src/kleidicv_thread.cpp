@@ -237,6 +237,11 @@ inline kleidicv_error_t kleidicv_thread_binary_op_impl(
     F f, kleidicv_thread_multithreading mt, const SrcT *src_a,
     size_t src_a_stride, const SrcT *src_b, size_t src_b_stride, DstT *dst,
     size_t dst_stride, size_t width, size_t height, Args... args) {
+  if (kleidicv_error_t err = kleidicv::binary_operation_validate(
+          src_a, src_a_stride, src_b, src_b_stride, dst, dst_stride, width,
+          height)) {
+    return err;
+  }
   auto callback = [=](size_t begin, size_t end) {
     return f(
         src_a + static_cast<ptrdiff_t>(begin * src_a_stride / sizeof(SrcT)),

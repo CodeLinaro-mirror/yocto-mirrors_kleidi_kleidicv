@@ -6,6 +6,7 @@
 
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/neon.h"
+#include "kleidicv/operation_validation.h"
 
 namespace kleidicv::neon {
 
@@ -28,10 +29,11 @@ template <typename T>
 kleidicv_error_t bitwise_and(const T *src_a, size_t src_a_stride,
                              const T *src_b, size_t src_b_stride, T *dst,
                              size_t dst_stride, size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src_a, src_a_stride, height);
-  CHECK_POINTER_AND_STRIDE(src_b, src_b_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err =
+          binary_operation_validate(src_a, src_a_stride, src_b, src_b_stride,
+                                    dst, dst_stride, width, height)) {
+    return err;
+  }
 
   BitwiseAnd<T> operation;
   Rectangle rect{width, height};

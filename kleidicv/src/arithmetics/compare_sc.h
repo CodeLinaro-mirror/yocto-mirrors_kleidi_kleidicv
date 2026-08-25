@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -6,6 +6,7 @@
 #define KLEIDICV_COMPARE_SC_H
 
 #include "kleidicv/kleidicv.h"
+#include "kleidicv/operation_validation.h"
 #include "kleidicv/sve2.h"
 
 namespace KLEIDICV_TARGET_NAMESPACE {
@@ -57,10 +58,11 @@ kleidicv_error_t compare_sc(const ScalarType *src_a, size_t src_a_stride,
                             const ScalarType *src_b, size_t src_b_stride,
                             ScalarType *dst, size_t dst_stride, size_t width,
                             size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src_a, src_a_stride, height);
-  CHECK_POINTER_AND_STRIDE(src_b, src_b_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  if (kleidicv_error_t err =
+          binary_operation_validate(src_a, src_a_stride, src_b, src_b_stride,
+                                    dst, dst_stride, width, height)) {
+    return err;
+  }
 
   Comparator operation{};
   Rectangle rect{width, height};
