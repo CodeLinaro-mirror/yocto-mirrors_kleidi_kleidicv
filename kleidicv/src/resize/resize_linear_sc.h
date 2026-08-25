@@ -1147,12 +1147,6 @@ kleidicv_resize_linear_stripe_f32_sc(const float *src, size_t src_stride,
                                      size_t y_begin, size_t y_end, float *dst,
                                      size_t dst_stride, size_t dst_width,
                                      size_t dst_height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
-
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
   if (src_width * 2 == dst_width && src_height * 2 == dst_height) {
     return resize_2x2_f32_sc(src, src_stride, src_width, src_height, y_begin,
                              y_end, dst, dst_stride);
@@ -1161,18 +1155,13 @@ kleidicv_resize_linear_stripe_f32_sc(const float *src, size_t src_stride,
     return resize_4x4_f32_sc(src, src_stride, src_width, src_height, y_begin,
                              y_end, dst, dst_stride);
   }
-  if (src_width * 8 == dst_width && src_height * 8 == dst_height) {
-    if (svcntw() >= 8) {
-      return resize_8x8_f32_sve256plus_sc(src, src_stride, src_width,
-                                          src_height, y_begin, y_end, dst,
-                                          dst_stride);
-    }
-    return resize_8x8_f32_sve128_sc(src, src_stride, src_width, src_height,
-                                    y_begin, y_end, dst, dst_stride);
+  // Validation guarantees that the remaining supported ratio is 8x.
+  if (svcntw() >= 8) {
+    return resize_8x8_f32_sve256plus_sc(src, src_stride, src_width, src_height,
+                                        y_begin, y_end, dst, dst_stride);
   }
-  // resize_linear_f32_is_implemented checked the kernel size already.
-  assert(!"resize ratio not implemented");  // GCOVR_EXCL_LINE
-  return KLEIDICV_ERROR_NOT_IMPLEMENTED;    // GCOVR_EXCL_LINE
+  return resize_8x8_f32_sve128_sc(src, src_stride, src_width, src_height,
+                                  y_begin, y_end, dst, dst_stride);
 }
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE

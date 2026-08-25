@@ -1232,13 +1232,11 @@ kleidicv_error_t kleidicv_thread_resize_linear_u8(
     const uint8_t *src, size_t src_stride, size_t src_width, size_t src_height,
     uint8_t *dst, size_t dst_stride, size_t dst_width, size_t dst_height,
     size_t channels, kleidicv_thread_multithreading mt) {
-  if (!kleidicv::resize_linear_u8_is_implemented(
-          src_width, src_height, dst_width, dst_height, channels)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err = kleidicv::resize_linear_u8_validate(
+          src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
+          dst_height, channels)) {
+    return err;
   }
-
-  CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
 
   if (src_width == 0 || src_height == 0) {
     return KLEIDICV_OK;
@@ -1279,9 +1277,14 @@ kleidicv_error_t kleidicv_thread_resize_linear_f32(
     const float *src, size_t src_stride, size_t src_width, size_t src_height,
     float *dst, size_t dst_stride, size_t dst_width, size_t dst_height,
     size_t channels, kleidicv_thread_multithreading mt) {
-  if (!kleidicv::resize_linear_f32_is_implemented(
-          src_width, src_height, dst_width, dst_height, channels)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err = kleidicv::resize_linear_f32_validate(
+          src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
+          dst_height, channels)) {
+    return err;
+  }
+
+  if (src_width == 0 || src_height == 0) {
+    return KLEIDICV_OK;
   }
 
   auto callback = [=](size_t y_begin, size_t y_end) {

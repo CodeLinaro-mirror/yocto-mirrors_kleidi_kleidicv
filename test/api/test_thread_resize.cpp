@@ -4,14 +4,20 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <functional>
+
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "thread_validation.h"
 
 // Tuple of width, height, thread count, channel count.
 typedef std::tuple<size_t, size_t, size_t, size_t> P;
+
+using ResizeThreadValidation = test::ThreadValidation;
 
 class ResizeThread : public testing::TestWithParam<P> {
  public:
@@ -203,16 +209,15 @@ INSTANTIATE_TEST_SUITE_P(, ResizeThread,
                                          P{1, 7, 4, 1}, P{12, 34, 5, 2}, P{ 7, 17, 5, 3}, P{11, 19, 3, 4}));
 // clang-format on
 
-TEST(ResizeThreadTest, ZeroImageSize) {
+TEST_F(ResizeThreadValidation, ZeroImageSize) {
   uint8_t src[1] = {}, dst[1] = {};
-  const auto mt = get_multithreading_fake(2);
 
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_thread_resize_linear_u8(src, 0, 0, 0, dst, 0,
-                                                          0, 0, 1, mt));
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_thread_resize_linear_u8(src, 1, 1, 0, dst, 2,
-                                                          2, 0, 1, mt));
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_thread_resize_linear_u8(src, 0, 0, 1, dst, 0,
-                                                          0, 2, 1, mt));
+  expect_no_work(kleidicv_thread_resize_linear_u8(src, 0, 0, 0, dst, 0, 0, 0, 1,
+                                                  scheduler()));
+  expect_no_work(kleidicv_thread_resize_linear_u8(src, 1, 1, 0, dst, 2, 2, 0, 1,
+                                                  scheduler()));
+  expect_no_work(kleidicv_thread_resize_linear_u8(src, 0, 0, 1, dst, 0, 0, 2, 1,
+                                                  scheduler()));
 }
 
 TEST(ResizeThreadTest, NullPointer) {
@@ -277,3 +282,166 @@ TEST(ResizeThreadTest, NotImplemented) {
                   get_multithreading_fake(2)));
   }
 }
+
+namespace {
+
+TEST_F(ResizeThreadValidation, ResizeLinearU8) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_resize_linear_u8(nullptr, 1, 1, 1, &dst, 8, 8,
+                                                   8, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_resize_linear_u8(nullptr, 16, 16, 4, &dst, 24,
+                                                   24, 6, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_resize_linear_u8(&src, 16, 16, 4, nullptr, 24,
+                                                   24, 6, 1, scheduler()));
+  expect_dispatched(6, kleidicv_thread_resize_linear_u8(
+                           &src, 16, 16, 4, &dst, 24, 24, 6, 1, scheduler()));
+}
+
+TEST_F(ResizeThreadValidation, ResizeLinearF32) {
+  float src = 0.0F;
+  float dst = 0.0F;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_resize_linear_f32(nullptr, 1, 2, 2, &dst, 1,
+                                                    3, 3, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_resize_linear_f32(nullptr, sizeof(float), 2, 2, &dst,
+                                        sizeof(float), 4, 4, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_resize_linear_f32(&src, sizeof(float), 2, 2, nullptr,
+                                        sizeof(float), 4, 4, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_resize_linear_f32(&src, 1, 2, 2, nullptr, 1,
+                                                    4, 4, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT, kleidicv_thread_resize_linear_f32(
+                                                &src, sizeof(float), 2, 2, &dst,
+                                                1, 4, 4, 1, scheduler()));
+  expect_no_work(kleidicv_thread_resize_linear_f32(
+      &src, sizeof(float), 0, 2, &dst, sizeof(float), 4, 4, 1, scheduler()));
+  expect_no_work(kleidicv_thread_resize_linear_f32(
+      &src, sizeof(float), 2, 0, &dst, sizeof(float), 4, 4, 1, scheduler()));
+  expect_dispatched(1, kleidicv_thread_resize_linear_f32(&src, sizeof(float), 2,
+                                                         2, &dst, sizeof(float),
+                                                         4, 4, 1, scheduler()));
+}
+
+// Check the output after one controlled stripe, then finish the other tasks
+// so the scheduler covers every task exactly once.
+struct PartialResizeScheduler {
+  size_t begin;
+  size_t end;
+  size_t expected_task_count;
+  std::function<void()> check_stripe;
+  size_t call_count = 0;
+
+  static kleidicv_error_t parallel(kleidicv_thread_callback callback,
+                                   void *callback_data, void *parallel_data,
+                                   size_t task_count) {
+    auto &self = *static_cast<PartialResizeScheduler *>(parallel_data);
+    ++self.call_count;
+    EXPECT_EQ(self.expected_task_count, task_count);
+    if (auto err = callback(self.begin, self.end, callback_data)) {
+      return err;
+    }
+    self.check_stripe();
+    if (self.begin != 0) {
+      if (auto err = callback(0, self.begin, callback_data)) {
+        return err;
+      }
+    }
+    if (self.end != task_count) {
+      return callback(self.end, task_count, callback_data);
+    }
+    return KLEIDICV_OK;
+  }
+};
+
+TEST(ResizeThreadTest, U8PartialStripeMatchesPublicApi) {
+  constexpr size_t kSrcWidth = 16;
+  constexpr size_t kSrcHeight = 4;
+  constexpr size_t kDstWidth = 24;
+  constexpr size_t kDstHeight = 6;
+  constexpr size_t kYBegin = 2;
+  constexpr size_t kYEnd = 4;
+  constexpr uint8_t kSentinel = 0xA5;
+  std::array<uint8_t, kSrcWidth * kSrcHeight> src = {};
+  std::array<uint8_t, kDstWidth * kDstHeight> expected = {};
+  std::array<uint8_t, kDstWidth * kDstHeight> actual = {};
+
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint8_t>(index);
+  }
+  actual.fill(kSentinel);
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_resize_linear_u8(src.data(), kSrcWidth, kSrcWidth,
+                                      kSrcHeight, expected.data(), kDstWidth,
+                                      kDstWidth, kDstHeight, 1));
+
+  PartialResizeScheduler scheduler{
+      kYBegin, kYEnd, kDstHeight, [&] {
+        for (size_t y = 0; y < kDstHeight; ++y) {
+          for (size_t x = 0; x < kDstWidth; ++x) {
+            const size_t index = y * kDstWidth + x;
+            EXPECT_EQ(y >= kYBegin && y < kYEnd ? expected[index] : kSentinel,
+                      actual[index]);
+          }
+        }
+      }};
+  ASSERT_EQ(KLEIDICV_OK, kleidicv_thread_resize_linear_u8(
+                             src.data(), kSrcWidth, kSrcWidth, kSrcHeight,
+                             actual.data(), kDstWidth, kDstWidth, kDstHeight, 1,
+                             {PartialResizeScheduler::parallel, &scheduler}));
+  EXPECT_EQ(size_t{1}, scheduler.call_count);
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(ResizeThreadTest, F32PartialStripeMatchesPublicApi) {
+  constexpr size_t kSrcWidth = 3;
+  constexpr size_t kSrcHeight = 3;
+  constexpr size_t kDstWidth = 6;
+  constexpr size_t kDstHeight = 6;
+  constexpr size_t kFirstWrittenDstRow = 3;
+  constexpr float kSentinel = -1.0F;
+  std::array<float, kSrcWidth * kSrcHeight> src = {0.0F, 1.0F, 2.0F, 3.0F, 4.0F,
+                                                   5.0F, 6.0F, 7.0F, 8.0F};
+  std::array<float, kDstWidth * kDstHeight> expected = {};
+  std::array<float, kDstWidth * kDstHeight> actual = {};
+  actual.fill(kSentinel);
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_resize_linear_f32(src.data(), sizeof(float) * kSrcWidth,
+                                       kSrcWidth, kSrcHeight, expected.data(),
+                                       sizeof(float) * kDstWidth, kDstWidth,
+                                       kDstHeight, 1));
+
+  // Task [1, 2) becomes source stripe [1, 3), which writes destination rows
+  // [3, 6). The scheduler then processes the remaining task [0, 1).
+  PartialResizeScheduler scheduler{
+      1, 2, kSrcHeight - 1, [&] {
+        for (size_t y = 0; y < kDstHeight; ++y) {
+          for (size_t x = 0; x < kDstWidth; ++x) {
+            const size_t index = y * kDstWidth + x;
+            EXPECT_FLOAT_EQ(
+                y >= kFirstWrittenDstRow ? expected[index] : kSentinel,
+                actual[index]);
+          }
+        }
+      }};
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_thread_resize_linear_f32(
+                src.data(), sizeof(float) * kSrcWidth, kSrcWidth, kSrcHeight,
+                actual.data(), sizeof(float) * kDstWidth, kDstWidth, kDstHeight,
+                1, {PartialResizeScheduler::parallel, &scheduler}));
+  EXPECT_EQ(size_t{1}, scheduler.call_count);
+  for (size_t index = 0; index < actual.size(); ++index) {
+    EXPECT_FLOAT_EQ(expected[index], actual[index]);
+  }
+}
+
+}  // namespace

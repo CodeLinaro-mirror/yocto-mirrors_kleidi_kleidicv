@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <algorithm>
 #include <cassert>
 #include <utility>
 
@@ -9,7 +10,6 @@
 #include "kleidicv/dispatch.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/resize/resize_linear.h"
-#include "kleidicv/utils.h"
 
 #define KLEIDICV_DEFINE_C_API_ALL(name, called_name)       \
   KLEIDICV_MULTIVERSION_C_API_WITH_SME(                    \
@@ -214,13 +214,11 @@ kleidicv_error_t resize_linear_u8(const uint8_t *src, size_t src_stride,
                                   uint8_t *dst, size_t dst_stride,
                                   size_t dst_width, size_t dst_height,
                                   size_t channels) {
-  if (!resize_linear_u8_is_implemented(src_width, src_height, dst_width,
-                                       dst_height, channels)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err = resize_linear_u8_validate(
+          src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
+          dst_height, channels)) {
+    return err;
   }
-
-  CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
 
   if (src_width == 0 || src_height == 0) {
     return KLEIDICV_OK;
@@ -248,10 +246,16 @@ kleidicv_error_t resize_linear_f32(const float *src, size_t src_stride,
                                    float *dst, size_t dst_stride,
                                    size_t dst_width, size_t dst_height,
                                    size_t channels) {
-  if (!resize_linear_f32_is_implemented(src_width, src_height, dst_width,
-                                        dst_height, channels)) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  if (kleidicv_error_t err = resize_linear_f32_validate(
+          src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
+          dst_height, channels)) {
+    return err;
   }
+
+  if (src_width == 0 || src_height == 0) {
+    return KLEIDICV_OK;
+  }
+
   return StripeFunction(src, src_stride, src_width, src_height, 0, src_height,
                         dst, dst_stride, dst_width, dst_height);
 }

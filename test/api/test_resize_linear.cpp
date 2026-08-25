@@ -1244,6 +1244,18 @@ TEST(ResizeLinearF32, NullPointer) {
                        sizeof(float) * 32, 32, 32, 1);
 }
 
+TEST(ResizeLinearF32, MisalignedStride) {
+  float src[4] = {};
+  float dst[16] = {};
+
+  EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT,
+            kleidicv_resize_linear_f32(src, 1, 2, 2, dst, sizeof(float) * 4, 4,
+                                       4, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT,
+            kleidicv_resize_linear_f32(src, sizeof(float) * 2, 2, 2, dst, 1, 4,
+                                       4, 1));
+}
+
 TEST(ResizeLinearF32, InvalidChannelCount) {
   size_t channels = 2;
   std::vector<float> src(2UL * 2UL * channels);
