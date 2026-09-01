@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef KLEIDICV_GAUSSIAN_BLUR_SC_H
-#define KLEIDICV_GAUSSIAN_BLUR_SC_H
+#ifndef KLEIDICV_GAUSSIAN_BLUR_FIXED_SC_H
+#define KLEIDICV_GAUSSIAN_BLUR_FIXED_SC_H
 
 #include <array>
 #include <cassert>
@@ -518,7 +518,7 @@ static kleidicv_error_t gaussian_blur_fixed_kernel_size(
 }
 
 template <bool IsBinomial, typename ScalarType>
-static kleidicv_error_t gaussian_blur(
+static kleidicv_error_t gaussian_blur_fixed(
     size_t kernel_size, const ScalarType *src, size_t src_stride,
     ScalarType *dst, size_t dst_stride, Rectangle &rect, size_t y_begin,
     size_t y_end, size_t channels, float sigma,
@@ -567,16 +567,16 @@ static kleidicv_error_t gaussian_blur_fixed_stripe_u8_sc(
   Rectangle rect{width, height};
 
   if (sigma_x == 0.0) {
-    return gaussian_blur<true>(kernel_width, src, src_stride, dst, dst_stride,
-                               rect, y_begin, y_end, channels, sigma_x,
-                               fixed_border_type);
+    return gaussian_blur_fixed<true>(kernel_width, src, src_stride, dst,
+                                     dst_stride, rect, y_begin, y_end, channels,
+                                     sigma_x, fixed_border_type);
   }
 
-  return gaussian_blur<false>(kernel_width, src, src_stride, dst, dst_stride,
-                              rect, y_begin, y_end, channels, sigma_x,
-                              fixed_border_type);
+  return gaussian_blur_fixed<false>(kernel_width, src, src_stride, dst,
+                                    dst_stride, rect, y_begin, y_end, channels,
+                                    sigma_x, fixed_border_type);
 }
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE
 
-#endif  // KLEIDICV_GAUSSIAN_BLUR_SC_H
+#endif  // KLEIDICV_GAUSSIAN_BLUR_FIXED_SC_H
