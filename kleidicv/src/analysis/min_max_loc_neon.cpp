@@ -1,10 +1,11 @@
-// SPDX-FileCopyrightText: 2023 - 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <climits>
 #include <limits>
 
+#include "kleidicv/analysis/min_max.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/neon.h"
 
@@ -310,11 +311,8 @@ template <typename ScalarType>
 kleidicv_error_t min_max_loc(const ScalarType *src, size_t src_stride,
                              size_t width, size_t height, size_t *min_offset,
                              size_t *max_offset) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
-  if (KLEIDICV_UNLIKELY(width == 0 || height == 0)) {
-    return KLEIDICV_ERROR_RANGE;
+  if (kleidicv_error_t err = min_max_validate(src, src_stride, width, height)) {
+    return err;
   }
 
   Rectangle rect{width, height};

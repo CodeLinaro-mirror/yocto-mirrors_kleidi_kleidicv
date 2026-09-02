@@ -56,7 +56,7 @@ The `kleidicv_thread_parallel` implementation is responsible for:
 
 - splitting the task index range from 0 up to `task_count` into one or more task ranges;
 - calling `callback(begin, end, callback_data)` for those ranges;
-- ensuring each non-empty range satisfies `0 <= begin < end <= task_count`;
+- ensuring each range satisfies `0 <= begin < end <= task_count`;
 - covering each task index exactly once;
 - waiting for all submitted work to finish before returning;
 - returning a non-`KLEIDICV_OK` value if any callback call fails;

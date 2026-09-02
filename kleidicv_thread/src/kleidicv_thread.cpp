@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "heap_array.h"
+#include "kleidicv/analysis/min_max.h"
 #include "kleidicv/arithmetics/scale.h"
 #include "kleidicv/conversions/rgb_to_yuv.h"
 #include "kleidicv/conversions/yuv_to_rgb.h"
@@ -693,6 +694,11 @@ kleidicv_error_t parallel_min_max(FunctionType min_max_func,
                                   ScalarType *p_min_value,
                                   ScalarType *p_max_value,
                                   kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err =
+          kleidicv::min_max_validate(src, src_stride, width, height)) {
+    return err;
+  }
+
   const size_t value_count = std::max<size_t>(1, height);
   kleidicv::thread_internal::HeapArray<ScalarType> min_values;
   kleidicv::thread_internal::HeapArray<ScalarType> max_values;
@@ -724,6 +730,11 @@ kleidicv_error_t parallel_min_max_with_sme(
     CpuFunction cpu_function, SmeFunction sme_function, const ScalarType *src,
     size_t src_stride, size_t width, size_t height, ScalarType *p_min_value,
     ScalarType *p_max_value, kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err =
+          kleidicv::min_max_validate(src, src_stride, width, height)) {
+    return err;
+  }
+
   const size_t value_count = std::max<size_t>(1, height);
   kleidicv::thread_internal::HeapArray<ScalarType> min_values;
   kleidicv::thread_internal::HeapArray<ScalarType> max_values;
@@ -809,6 +820,11 @@ kleidicv_error_t parallel_min_max_loc(FunctionType min_max_loc_func,
                                       size_t *p_min_offset,
                                       size_t *p_max_offset,
                                       kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err =
+          kleidicv::min_max_validate(src, src_stride, width, height)) {
+    return err;
+  }
+
   const size_t value_count = std::max<size_t>(1, height);
   kleidicv::thread_internal::HeapArray<size_t> min_offsets;
   kleidicv::thread_internal::HeapArray<size_t> max_offsets;

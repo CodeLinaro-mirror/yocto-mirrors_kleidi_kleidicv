@@ -46,7 +46,7 @@ extern "C" {
 /// task index from 0 up to, but not including, `task_count` must be covered
 /// exactly once across all callback calls made for one
 /// @ref kleidicv_thread_parallel invocation. Each range must satisfy
-/// `0 <= begin <= end <= task_count`.
+/// `0 <= begin < end <= task_count`.
 ///
 /// @param begin Index of the first task in the range, inclusive.
 /// @param end Index one past the last task in the range, exclusive.

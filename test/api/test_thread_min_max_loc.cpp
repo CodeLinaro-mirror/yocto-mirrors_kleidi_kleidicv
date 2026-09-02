@@ -5,14 +5,20 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <limits>
 #include <thread>
 
 #include "framework/array.h"
 #include "framework/generator.h"
+#include "framework/utils.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "test_config.h"
+#include "thread_validation.h"
 
 #define KLEIDICV_MIN_MAX_LOC(type, suffix) \
   KLEIDICV_API(min_max_loc, kleidicv_min_max_loc_##suffix, type)
@@ -24,19 +30,73 @@ KLEIDICV_MIN_MAX_LOC(uint8_t, u8);
 
 KLEIDICV_THREAD_MIN_MAX_LOC(uint8_t, u8);
 
-TEST(MinMaxLocThread, AllocationFailure) {
-  uint8_t src = 0;
-  size_t offset = 0;
-  const size_t excessive_height = std::numeric_limits<size_t>::max();
-  const auto mt = get_multithreading_fake(2);
+namespace {
 
-  EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION,
-            kleidicv_thread_min_max_loc_u8(
-                &src, sizeof(src), 1, excessive_height, &offset, nullptr, mt));
-  EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION,
-            kleidicv_thread_min_max_loc_u8(
-                &src, sizeof(src), 1, excessive_height, nullptr, &offset, mt));
+using ThreadMinMaxLocValidation = test::ThreadValidation;
+
+TEST_F(ThreadMinMaxLocValidation, OversizeImage) {
+  uint8_t src = 0;
+  const size_t excessive_height = std::numeric_limits<size_t>::max();
+  for (bool request_min : {true, false}) {
+    SCOPED_TRACE(request_min ? "minimum requested" : "minimum omitted");
+    for (bool request_max : {true, false}) {
+      SCOPED_TRACE(request_max ? "maximum requested" : "maximum omitted");
+      size_t min_offset = 3, max_offset = 4;
+
+      expect_rejected(KLEIDICV_ERROR_RANGE,
+                      kleidicv_thread_min_max_loc_u8(
+                          &src, sizeof(src), 1, excessive_height,
+                          request_min ? &min_offset : nullptr,
+                          request_max ? &max_offset : nullptr, scheduler()));
+      EXPECT_EQ(size_t{3}, min_offset);
+      EXPECT_EQ(size_t{4}, max_offset);
+    }
+  }
 }
+
+TEST_F(ThreadMinMaxLocValidation, NullSourcesReturnBeforeScheduling) {
+  size_t min_offset = 1, max_offset = 2;
+
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_min_max_loc_u8(nullptr, sizeof(uint8_t), 1, 2,
+                                     &min_offset, &max_offset, scheduler()));
+
+  EXPECT_EQ(size_t{1}, min_offset);
+  EXPECT_EQ(size_t{2}, max_offset);
+}
+
+TEST_F(ThreadMinMaxLocValidation, OptionalOutputsStillDispatch) {
+  uint8_t src[2] = {};
+
+  expect_dispatched(2, kleidicv_thread_min_max_loc_u8(src, 1, 1, 2, nullptr,
+                                                      nullptr, scheduler()));
+}
+
+#ifdef KLEIDICV_ALLOCATION_TESTS
+TEST_F(ThreadMinMaxLocValidation,
+       MinMaxLocAllocationFailureReturnsBeforeScheduling) {
+  const uint8_t src = 0;
+  for (bool request_min : {true, false}) {
+    SCOPED_TRACE(request_min ? "minimum" : "maximum");
+    size_t min_offset = 1;
+    size_t max_offset = 2;
+    const auto mt = scheduler();
+
+    AllocationFailureMock::enable();
+    const kleidicv_error_t result = kleidicv_thread_min_max_loc_u8(
+        &src, sizeof(src), 1, 1, request_min ? &min_offset : nullptr,
+        request_min ? nullptr : &max_offset, mt);
+    AllocationFailureMock::disable();
+
+    expect_rejected(KLEIDICV_ERROR_ALLOCATION, result);
+    EXPECT_EQ(size_t{1}, min_offset);
+    EXPECT_EQ(size_t{2}, max_offset);
+  }
+}
+#endif  // KLEIDICV_ALLOCATION_TESTS
+
+}  // namespace
 
 template <typename ElementType>
 class MinMaxLocThread : public testing::Test {};

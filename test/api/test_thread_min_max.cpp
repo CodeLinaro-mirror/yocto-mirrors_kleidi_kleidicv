@@ -5,14 +5,20 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <limits>
 #include <thread>
 
 #include "framework/array.h"
 #include "framework/generator.h"
+#include "framework/utils.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "test_config.h"
+#include "thread_validation.h"
 
 #define KLEIDICV_MIN_MAX(type, suffix) \
   KLEIDICV_API(min_max, kleidicv_min_max_##suffix, type)
@@ -53,19 +59,128 @@ TEST(MinMaxThread, SimpleFloat) {
   }
 }
 
-TEST(MinMaxThread, AllocationFailure) {
+TEST(MinMaxThread, OversizeImage) {
   float src = 0;
   float value = 0;
   const size_t excessive_height = std::numeric_limits<size_t>::max();
   const auto mt = get_multithreading_fake(2);
 
-  EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_thread_min_max_f32(&src, sizeof(src), 1, excessive_height,
                                         &value, nullptr, mt));
-  EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_thread_min_max_f32(&src, sizeof(src), 1, excessive_height,
                                         nullptr, &value, mt));
 }
+
+namespace {
+
+using ThreadMinMaxValidation = test::ThreadValidation;
+
+TEST_F(ThreadMinMaxValidation, NullSourcesReturnBeforeScheduling) {
+  int8_t min_s8 = 1, max_s8 = 2;
+  uint8_t min_u8 = 1, max_u8 = 2;
+  int16_t min_s16 = 1, max_s16 = 2;
+  uint16_t min_u16 = 1, max_u16 = 2;
+  int32_t min_s32 = 1, max_s32 = 2;
+  float min_f32 = 1.0F, max_f32 = 2.0F;
+
+#define EXPECT_NULL(call) expect_rejected(KLEIDICV_ERROR_NULL_POINTER, call)
+
+  EXPECT_NULL(kleidicv_thread_min_max_s8(nullptr, sizeof(int8_t), 1, 2, &min_s8,
+                                         &max_s8, scheduler()));
+  EXPECT_NULL(kleidicv_thread_min_max_u8(nullptr, sizeof(uint8_t), 1, 2,
+                                         &min_u8, &max_u8, scheduler()));
+  EXPECT_NULL(kleidicv_thread_min_max_s16(nullptr, sizeof(int16_t), 1, 2,
+                                          &min_s16, &max_s16, scheduler()));
+  EXPECT_NULL(kleidicv_thread_min_max_u16(nullptr, sizeof(uint16_t), 1, 2,
+                                          &min_u16, &max_u16, scheduler()));
+  EXPECT_NULL(kleidicv_thread_min_max_s32(nullptr, sizeof(int32_t), 1, 2,
+                                          &min_s32, &max_s32, scheduler()));
+  EXPECT_NULL(kleidicv_thread_min_max_f32(nullptr, sizeof(float), 1, 2,
+                                          &min_f32, &max_f32, scheduler()));
+
+#undef EXPECT_NULL
+
+  EXPECT_EQ(int8_t{1}, min_s8);
+  EXPECT_EQ(int8_t{2}, max_s8);
+}
+
+TEST_F(ThreadMinMaxValidation, AlignmentPrecedesImageRange) {
+  int16_t src = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_min_max_s16(nullptr, 1, kLargeWidth, 2,
+                                              nullptr, nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_min_max_s16(&src, 1, kLargeWidth, 2, nullptr,
+                                              nullptr, scheduler()));
+
+  // As in the ordinary API, a single-row image does not require an aligned
+  // stride.
+  expect_dispatched(1, kleidicv_thread_min_max_s16(&src, 1, 1, 1, nullptr,
+                                                   nullptr, scheduler()));
+}
+
+TEST_F(ThreadMinMaxValidation, InvalidGeometryReturnsBeforeScheduling) {
+  uint8_t src = 0;
+  constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_min_max_u8(&src, 1, kLargeWidth, 2, nullptr,
+                                             nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_min_max_u8(&src, 1, kMaxSize, 2, nullptr,
+                                             nullptr, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_min_max_u8(&src, 1, 0, 2, nullptr, nullptr, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_min_max_u8(&src, 1, 1, 0, nullptr, nullptr, scheduler()));
+}
+
+TEST_F(ThreadMinMaxValidation, OptionalOutputsStillDispatch) {
+  uint8_t src[2] = {};
+
+  expect_dispatched(2, kleidicv_thread_min_max_u8(src, 1, 1, 2, nullptr,
+                                                  nullptr, scheduler()));
+}
+
+#ifdef KLEIDICV_ALLOCATION_TESTS
+TEST_F(ThreadMinMaxValidation, MinMaxAllocationFailureReturnsBeforeScheduling) {
+  const auto check = [this](const char *name, auto min_max, auto src) {
+    SCOPED_TRACE(name);
+    for (bool request_min : {true, false}) {
+      SCOPED_TRACE(request_min ? "minimum" : "maximum");
+      decltype(src) min_value = 1;
+      decltype(src) max_value = 2;
+      const auto mt = scheduler();
+
+      AllocationFailureMock::enable();
+      const kleidicv_error_t result =
+          min_max(&src, sizeof(src), 1, 1, request_min ? &min_value : nullptr,
+                  request_min ? nullptr : &max_value, mt);
+      AllocationFailureMock::disable();
+
+      expect_rejected(KLEIDICV_ERROR_ALLOCATION, result);
+      EXPECT_EQ(1, min_value);
+      EXPECT_EQ(2, max_value);
+    }
+  };
+
+  check("s8", kleidicv_thread_min_max_s8, int8_t{0});
+  check("u8", kleidicv_thread_min_max_u8, uint8_t{0});
+  check("s16", kleidicv_thread_min_max_s16, int16_t{0});
+  check("u16", kleidicv_thread_min_max_u16, uint16_t{0});
+  check("s32", kleidicv_thread_min_max_s32, int32_t{0});
+  check("f32", kleidicv_thread_min_max_f32, float{0});
+}
+#endif  // KLEIDICV_ALLOCATION_TESTS
+
+}  // namespace
 
 template <typename ElementType>
 class MinMaxThread : public testing::Test {};

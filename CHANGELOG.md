@@ -16,6 +16,8 @@ This changelog aims to follow the guiding principles of
 ## 26.12 - not yet released
 
 ### Changed
+- Custom threading backends must provide non-empty callback ranges satisfying
+  `0 <= begin < end <= task_count`.
 - `kleidicv_yuv_semiplanar_to_rgb_u8` and
   `kleidicv_yuv_semiplanar_to_rgb_u8_sme` are now ordinary functions instead of
   function pointers. This breaks ABI compatibility. Applications using these
