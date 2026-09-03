@@ -1,15 +1,18 @@
-// SPDX-FileCopyrightText: 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2025 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <limits>
 #include <vector>
 
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/utils.h"
+#include "kleidicv/conversions/yuv_to_rgb.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 

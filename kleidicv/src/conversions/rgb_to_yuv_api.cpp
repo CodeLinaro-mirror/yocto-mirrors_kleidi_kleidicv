@@ -30,6 +30,10 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
                                uint8_t *dst, size_t dst_stride, size_t width,
                                size_t height,
                                kleidicv_color_conversion_t color_format) {
+  if (width == 0 || height == 0) {
+    return KLEIDICV_OK;
+  }
+
   // Extract the base format
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
@@ -45,12 +49,12 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
   // YUV420 uses 2x2 chroma blocks spanning adjacent rows, so the stripe API
   // provides each invocation with contiguous rows and the proper per-plane
   // offsets for that slice.
-  if (kleidicv_error_t err = rgb_to_yuv420p_validate(
-          src, src_stride, dst, dst_stride, width, height, color_format)) {
+  if (kleidicv_error_t err =
+          rgb_to_yuv420p_validate(src, dst, width, height, color_format)) {
     return err;
   }
   return StripeFunction(src, src_stride, dst, dst_stride, width, height,
-                        color_format, 0, height);
+                        color_format, 0, yuv420_chroma_height(height));
 }
 
 template <auto &StripeFunction>
@@ -58,13 +62,17 @@ kleidicv_error_t rgb_to_yuv_semiplanar_u8(
     const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
     uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
     kleidicv_color_conversion_t color_format) {
-  if (kleidicv_error_t err =
-          rgb_to_yuv420sp_validate(src, src_stride, y_dst, y_stride, uv_dst,
-                                   uv_stride, width, height, color_format)) {
+  if (width == 0 || height == 0) {
+    return KLEIDICV_OK;
+  }
+
+  if (kleidicv_error_t err = rgb_to_yuv420sp_validate(src, y_dst, uv_dst, width,
+                                                      height, color_format)) {
     return err;
   }
   return StripeFunction(src, src_stride, y_dst, y_stride, uv_dst, uv_stride,
-                        width, height, color_format, 0, height);
+                        width, height, color_format, 0,
+                        yuv420_chroma_height(height));
 }
 
 }  // namespace kleidicv

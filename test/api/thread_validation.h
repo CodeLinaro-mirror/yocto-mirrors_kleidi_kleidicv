@@ -36,6 +36,11 @@ class ThreadValidation : public testing::Test {
     EXPECT_EQ(expected_task_count, parallel_task_count_);
   }
 
+  void expect_no_work(kleidicv_error_t actual) const {
+    EXPECT_EQ(KLEIDICV_OK, actual);
+    EXPECT_EQ(size_t{0}, parallel_call_count_);
+  }
+
  private:
   static kleidicv_error_t record_parallel(kleidicv_thread_callback /*callback*/,
                                           void * /*callback_data*/,

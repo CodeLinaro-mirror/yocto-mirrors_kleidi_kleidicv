@@ -45,4 +45,23 @@ inline bool is_yuv420sp_format_supported(
 
 }  // namespace kleidicv
 
+namespace KLEIDICV_TARGET_NAMESPACE {
+
+inline constexpr size_t yuv420_chroma_height(size_t height) KLEIDICV_STREAMING {
+  return height / 2 + height % 2;
+}
+
+// Converts a row index in a chroma plane to the corresponding row in the
+// luma plane. Clamping before doubling keeps the final row representable when
+// height is SIZE_MAX.
+inline constexpr size_t yuv420_luma_row(size_t chroma_row,
+                                        size_t height) KLEIDICV_STREAMING {
+  if (chroma_row >= yuv420_chroma_height(height)) {
+    return height;
+  }
+  return chroma_row * 2;
+}
+
+}  // namespace KLEIDICV_TARGET_NAMESPACE
+
 #endif  // KLEIDICV_CONVERSIONS_YUV420_H

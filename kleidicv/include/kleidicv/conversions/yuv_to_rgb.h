@@ -55,43 +55,48 @@ KLEIDICV_API_DECLARATION(kleidicv_yuv422_to_rgb_u8, const uint8_t *src,
 namespace kleidicv {
 
 inline kleidicv_error_t yuv_semiplanar_to_rgb_validate(
-    const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
-    size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
+    const uint8_t *src_y, const uint8_t *src_uv, uint8_t *dst, size_t width,
     size_t height, kleidicv_color_conversion_t color_format) {
   if (!is_yuv420sp_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-  CHECK_POINTER_AND_STRIDE(src_y, src_y_stride, height);
-  CHECK_POINTER_AND_STRIDE(src_uv, src_uv_stride, (height + 1) / 2);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
+  CHECK_POINTERS(src_y, src_uv, dst);
   CHECK_IMAGE_SIZE(width, height);
-
   return KLEIDICV_OK;
 }
 
+// The packed YUV420 data must be validated before deriving the UV plane
+// pointer.
+inline const uint8_t *get_yuv420sp_uv_plane(const uint8_t *src,
+                                            size_t src_stride, size_t width,
+                                            size_t height) {
+  if (width == 0 || height == 0) {
+    return src;
+  }
+
+  return src + src_stride * height;
+}
+
 inline kleidicv_error_t yuv420sp_to_rgb_validate(
-    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
-    size_t width, size_t height, kleidicv_color_conversion_t color_format) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, (height * 3 + 1) / 2);
+    const uint8_t *src, uint8_t *dst, size_t width, size_t height,
+    kleidicv_color_conversion_t color_format) {
+  CHECK_POINTERS(src);
   if (!is_yuv420sp_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
+  CHECK_POINTERS(dst);
   CHECK_IMAGE_SIZE(width, height);
-
   return KLEIDICV_OK;
 }
 
 inline kleidicv_error_t yuv420p_to_rgb_validate(
-    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
-    size_t width, size_t height, kleidicv_color_conversion_t color_format) {
+    const uint8_t *src, uint8_t *dst, size_t width, size_t height,
+    kleidicv_color_conversion_t color_format) {
   if (!is_yuv420p_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-  CHECK_POINTER_AND_STRIDE(src, src_stride, (height * 3 + 1) / 2);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
+  CHECK_POINTERS(src, dst);
   CHECK_IMAGE_SIZE(width, height);
-
   return KLEIDICV_OK;
 }
 

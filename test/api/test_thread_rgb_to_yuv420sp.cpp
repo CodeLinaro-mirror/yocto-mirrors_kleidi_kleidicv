@@ -5,6 +5,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
+#include <limits>
 #include <thread>
 
 #include "framework/array.h"
@@ -174,6 +176,7 @@ namespace {
 using RgbToYuv420SpValidation = test::ThreadValidation;
 
 constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
 
 TEST_F(RgbToYuv420SpValidation, RgbToSemiplanar) {
   uint8_t src = 0;
@@ -199,6 +202,10 @@ TEST_F(RgbToYuv420SpValidation, RgbToSemiplanar) {
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
                       &src, 1, &y_dst, 1, &uv_dst, 1, kLargeWidth, 2,
                       KLEIDICV_RGB_TO_NV12, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      &src, 1, &y_dst, 1, &uv_dst, 1, 2, kMaxSize,
+                      KLEIDICV_RGB_TO_NV12, scheduler()));
   expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
                       &src, 1, &y_dst, 1, &uv_dst, 1, 2, 2, kUnsupportedFormat,
@@ -211,6 +218,48 @@ TEST_F(RgbToYuv420SpValidation, RgbToSemiplanar) {
                   kleidicv_thread_rgb_to_yuv_semiplanar_u8(
                       nullptr, 1, &y_dst, 1, &uv_dst, 1, 2, 2,
                       kUnsupportedFormat, scheduler()));
+  expect_dispatched(2, kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                           &src, 1, &y_dst, 1, &uv_dst, 1, 2, 3,
+                           KLEIDICV_RGB_TO_NV12, scheduler()));
+}
+
+TEST_F(RgbToYuv420SpValidation, EmptyImages) {
+  constexpr uint8_t kUntouched = 0xFE;
+  uint8_t src = 0;
+  uint8_t y_dst = kUntouched;
+  uint8_t uv_dst = kUntouched;
+
+  for (auto shape :
+       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
+        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
+        std::array<size_t, 2>{kMaxSize, 0}}) {
+    const size_t width = shape[0];
+    const size_t height = shape[1];
+    for (auto format : {KLEIDICV_RGB_TO_NV12, KLEIDICV_RGB_TO_NV21,
+                        kleidicv_color_conversion_t{}}) {
+      SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                      << height << ", format=" << format);
+      for (auto function : {kleidicv_rgb_to_yuv_semiplanar_u8,
+                            kleidicv_rgb_to_yuv_semiplanar_u8_sme}) {
+        EXPECT_EQ(KLEIDICV_OK,
+                  function(&src, kMaxSize, &y_dst, kMaxSize, &uv_dst, kMaxSize,
+                           width, height, format));
+        EXPECT_EQ(kUntouched, y_dst);
+        EXPECT_EQ(kUntouched, uv_dst);
+        EXPECT_EQ(KLEIDICV_OK,
+                  function(nullptr, kMaxSize, nullptr, kMaxSize, nullptr,
+                           kMaxSize, width, height, format));
+      }
+      expect_no_work(kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+          &src, kMaxSize, &y_dst, kMaxSize, &uv_dst, kMaxSize, width, height,
+          format, scheduler()));
+      EXPECT_EQ(kUntouched, y_dst);
+      EXPECT_EQ(kUntouched, uv_dst);
+      expect_no_work(kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+          nullptr, kMaxSize, nullptr, kMaxSize, nullptr, kMaxSize, width,
+          height, format, scheduler()));
+    }
+  }
 }
 
 }  // namespace

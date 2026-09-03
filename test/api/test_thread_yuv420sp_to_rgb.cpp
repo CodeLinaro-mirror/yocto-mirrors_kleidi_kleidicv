@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <limits>
 #include <thread>
 #include <type_traits>
 
@@ -228,6 +229,7 @@ namespace {
 using Yuv420SpToRgbValidation = test::ThreadValidation;
 
 constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
 
 TEST_F(Yuv420SpToRgbValidation, PackedSemiplanarToRgb) {
   uint8_t src = 0;
@@ -247,6 +249,9 @@ TEST_F(Yuv420SpToRgbValidation, PackedSemiplanarToRgb) {
   expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
                                             &src, 1, &dst, 1, kLargeWidth, 2,
                                             KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
+                                            &src, 1, &dst, 1, 2, kMaxSize,
+                                            KLEIDICV_NV12_TO_RGB, scheduler()));
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
       kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, &dst, 1, 2, 2,
@@ -260,6 +265,7 @@ TEST_F(Yuv420SpToRgbValidation, PackedSemiplanarToRgb) {
       kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, kLargeWidth, 2,
                                     kUnsupportedFormat, scheduler()));
 }
+
 TEST_F(Yuv420SpToRgbValidation, SplitSemiplanarToRgb) {
   uint8_t src_y = 0;
   uint8_t src_uv = 0;
@@ -293,18 +299,47 @@ TEST_F(Yuv420SpToRgbValidation, SplitSemiplanarToRgb) {
                   kleidicv_thread_yuv_semiplanar_to_rgb_u8(
                       &src_y, 1, &src_uv, 1, &dst, 1, kLargeWidth, 2,
                       kUnsupportedFormat, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-                      &src_y, 1, &src_uv, 1, &dst, 1, 0, 1, kUnsupportedFormat,
-                      scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-                      &src_y, 1, &src_uv, 1, &dst, 1, 1, 0, kUnsupportedFormat,
-                      scheduler()));
   expect_dispatched(2, kleidicv_thread_yuv_semiplanar_to_rgb_u8(
                            &src_y, 1, &src_uv, 1, &dst, 1, 2, 3,
                            KLEIDICV_NV12_TO_RGB, scheduler()));
 }
+
+TEST_F(Yuv420SpToRgbValidation, EmptyImages) {
+  constexpr uint8_t kUntouched = 0xFE;
+  uint8_t src_y = 0;
+  uint8_t src_uv = 0;
+  uint8_t dst = kUntouched;
+
+  for (auto shape :
+       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
+        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
+        std::array<size_t, 2>{kMaxSize, 0}}) {
+    const size_t width = shape[0];
+    const size_t height = shape[1];
+    for (auto format : {KLEIDICV_NV12_TO_RGB, KLEIDICV_NV21_TO_RGB,
+                        kleidicv_color_conversion_t{}}) {
+      SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                      << height << ", format=" << format);
+      for (auto function : {kleidicv_yuv_semiplanar_to_rgb_u8,
+                            kleidicv_yuv_semiplanar_to_rgb_u8_sme}) {
+        EXPECT_EQ(KLEIDICV_OK, function(&src_y, kMaxSize, &src_uv, kMaxSize,
+                                        &dst, kMaxSize, width, height, format));
+        EXPECT_EQ(kUntouched, dst);
+        EXPECT_EQ(KLEIDICV_OK,
+                  function(nullptr, kMaxSize, nullptr, kMaxSize, nullptr,
+                           kMaxSize, width, height, format));
+      }
+      expect_no_work(kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+          &src_y, kMaxSize, &src_uv, kMaxSize, &dst, kMaxSize, width, height,
+          format, scheduler()));
+      EXPECT_EQ(kUntouched, dst);
+      expect_no_work(kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+          nullptr, kMaxSize, nullptr, kMaxSize, nullptr, kMaxSize, width,
+          height, format, scheduler()));
+    }
+  }
+}
+
 TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbHonorsChromaRowRange) {
   constexpr size_t kWidth = 18;
   constexpr size_t kHeight = 7;
@@ -373,6 +408,70 @@ TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbHonorsChromaRowRange) {
                     actual.data(), kDstStride, kWidth, kHeight, format, mt));
       EXPECT_EQ(expected, actual);
     }
+  }
+}
+
+}  // namespace
+
+namespace {
+
+struct ChromaRowScheduler {
+  size_t expected_tasks = 0;
+  size_t callback_count = 0;
+
+  kleidicv_thread_multithreading scheduler() {
+    callback_count = 0;
+    return {[](kleidicv_thread_callback callback, void *callback_data,
+               void *parallel_data, size_t task_count) {
+              auto &state = *static_cast<ChromaRowScheduler *>(parallel_data);
+              EXPECT_EQ(state.expected_tasks, task_count);
+              // Each callback processes one non-empty chroma-row range.
+              for (size_t begin = 0; begin < task_count; ++begin) {
+                ++state.callback_count;
+                if (auto error = callback(begin, begin + 1, callback_data)) {
+                  return error;
+                }
+              }
+              return KLEIDICV_OK;
+            },
+            this};
+  }
+};
+
+TEST(Yuv420SpScheduling, ChromaRowRangesMatchPublicApi) {
+  constexpr size_t kWidth = 2;
+  constexpr size_t kHeight = 3;
+  constexpr size_t kSrcStride = 4;
+  constexpr size_t kDstStride = 8;
+  constexpr uint8_t kUntouched = 0xFE;
+  std::array<uint8_t, kSrcStride *(kHeight + 2)> src{};
+  std::array<uint8_t, kDstStride * kHeight> expected{};
+  std::array<uint8_t, kDstStride * kHeight> actual{};
+  for (size_t i = 0; i < src.size(); ++i) {
+    src[i] = static_cast<uint8_t>(17 * i);
+  }
+
+  for (auto format : {KLEIDICV_NV12_TO_RGB, KLEIDICV_NV21_TO_RGBA}) {
+    expected.fill(kUntouched);
+    ASSERT_EQ(KLEIDICV_OK,
+              kleidicv_yuv_to_rgb_u8(src.data(), kSrcStride, expected.data(),
+                                     kDstStride, kWidth, kHeight, format));
+    ChromaRowScheduler state{2};
+    actual.fill(kUntouched);
+    ASSERT_EQ(KLEIDICV_OK,
+              kleidicv_thread_yuv_to_rgb_u8(
+                  src.data(), kSrcStride, actual.data(), kDstStride, kWidth,
+                  kHeight, format, state.scheduler()));
+    EXPECT_EQ(state.expected_tasks, state.callback_count);
+    EXPECT_EQ(expected, actual);
+    actual.fill(kUntouched);
+    ASSERT_EQ(KLEIDICV_OK,
+              kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                  src.data(), kSrcStride, src.data() + kSrcStride * kHeight,
+                  kSrcStride, actual.data(), kDstStride, kWidth, kHeight,
+                  format, state.scheduler()));
+    EXPECT_EQ(state.expected_tasks, state.callback_count);
+    EXPECT_EQ(expected, actual);
   }
 }
 

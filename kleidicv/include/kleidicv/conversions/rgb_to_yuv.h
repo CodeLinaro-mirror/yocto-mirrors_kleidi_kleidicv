@@ -52,30 +52,24 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv422_u8, const uint8_t *src,
 namespace kleidicv {
 
 inline kleidicv_error_t rgb_to_yuv420p_validate(
-    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
-    size_t width, size_t height, kleidicv_color_conversion_t color_format) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, (height * 3 + 1) / 2);
+    const uint8_t *src, uint8_t *dst, size_t width, size_t height,
+    kleidicv_color_conversion_t color_format) {
+  CHECK_POINTERS(src, dst);
   CHECK_IMAGE_SIZE(width, height);
   if (!is_yuv420p_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-
   return KLEIDICV_OK;
 }
 
 inline kleidicv_error_t rgb_to_yuv420sp_validate(
-    const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
-    uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
-    kleidicv_color_conversion_t color_format) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(y_dst, y_stride, height);
-  CHECK_POINTER_AND_STRIDE(uv_dst, uv_stride, (height + 1) / 2);
+    const uint8_t *src, uint8_t *y_dst, uint8_t *uv_dst, size_t width,
+    size_t height, kleidicv_color_conversion_t color_format) {
+  CHECK_POINTERS(src, y_dst, uv_dst);
   CHECK_IMAGE_SIZE(width, height);
   if (!is_yuv420sp_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-
   return KLEIDICV_OK;
 }
 

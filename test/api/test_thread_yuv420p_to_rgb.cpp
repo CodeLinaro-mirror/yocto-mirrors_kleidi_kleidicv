@@ -5,6 +5,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
+#include <limits>
 #include <thread>
 
 #include "framework/array.h"
@@ -152,6 +154,7 @@ namespace {
 using Yuv420PToRgbValidation = test::ThreadValidation;
 
 constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
 
 TEST_F(Yuv420PToRgbValidation, PlanarToRgb) {
   uint8_t src = 0;
@@ -171,10 +174,52 @@ TEST_F(Yuv420PToRgbValidation, PlanarToRgb) {
   expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
                                             &src, 1, &dst, 1, kLargeWidth, 2,
                                             KLEIDICV_IYUV_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
+                                            &src, 1, &dst, 1, 2, kMaxSize,
+                                            KLEIDICV_IYUV_TO_RGB, scheduler()));
   expect_rejected(
       KLEIDICV_ERROR_NOT_IMPLEMENTED,
       kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, nullptr, 1, kLargeWidth, 2,
                                     kUnsupportedFormat, scheduler()));
+
+  expect_dispatched(
+      2, kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, 2, 3,
+                                       KLEIDICV_IYUV_TO_RGB, scheduler()));
+}
+
+TEST_F(Yuv420PToRgbValidation, EmptyImages) {
+  constexpr uint8_t kUntouched = 0xFE;
+  uint8_t src = 0;
+  uint8_t dst = kUntouched;
+
+  for (auto shape :
+       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
+        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
+        std::array<size_t, 2>{kMaxSize, 0}}) {
+    const size_t width = shape[0];
+    const size_t height = shape[1];
+    for (auto format :
+         {KLEIDICV_IYUV_TO_RGB, KLEIDICV_YV12_TO_RGB, KLEIDICV_NV12_TO_RGB,
+          KLEIDICV_NV21_TO_RGB, KLEIDICV_YUV444_TO_RGB, KLEIDICV_YUYV_TO_RGB,
+          kleidicv_color_conversion_t{}}) {
+      SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                      << height << ", format=" << format);
+      for (auto function :
+           {kleidicv_yuv_to_rgb_u8, kleidicv_yuv_to_rgb_u8_sme}) {
+        EXPECT_EQ(KLEIDICV_OK, function(&src, kMaxSize, &dst, kMaxSize, width,
+                                        height, format));
+        EXPECT_EQ(kUntouched, dst);
+        EXPECT_EQ(KLEIDICV_OK, function(nullptr, kMaxSize, nullptr, kMaxSize,
+                                        width, height, format));
+      }
+      expect_no_work(kleidicv_thread_yuv_to_rgb_u8(
+          &src, kMaxSize, &dst, kMaxSize, width, height, format, scheduler()));
+      EXPECT_EQ(kUntouched, dst);
+      expect_no_work(kleidicv_thread_yuv_to_rgb_u8(nullptr, kMaxSize, nullptr,
+                                                   kMaxSize, width, height,
+                                                   format, scheduler()));
+    }
+  }
 }
 
 }  // namespace

@@ -4,10 +4,13 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <limits>
 #include <type_traits>
 
 #include "framework/array.h"
 #include "framework/utils.h"
+#include "kleidicv/conversions/yuv_to_rgb.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/utils.h"
 #include "test_config.h"
@@ -326,10 +329,57 @@ TEST(Yuv420Validation, SplitSemiplanarToRgbPointersAndPrecedence) {
     EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
               function(nullptr, 1, nullptr, 1, nullptr, 1,
                        KLEIDICV_MAX_IMAGE_PIXELS, 2, kUnsupportedFormat));
-    EXPECT_EQ(
-        KLEIDICV_ERROR_NOT_IMPLEMENTED,
-        function(&src_y, 1, &src_uv, 1, &dst, 1, 0, 1, kUnsupportedFormat));
+    EXPECT_EQ(KLEIDICV_OK, function(&src_y, 1, &src_uv, 1, &dst, 1, 0, 1,
+                                    kUnsupportedFormat));
   }
 }
 
 }  // namespace
+
+TEST(Yuv420Helpers, EmptyImageUvPlaneRemainsAtSource) {
+  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+
+  // Public APIs return before reaching this internal empty-image guard.
+  for (auto shape :
+       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
+        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
+        std::array<size_t, 2>{kMaxSize, 0}}) {
+    const size_t width = shape[0];
+    const size_t height = shape[1];
+    SCOPED_TRACE(testing::Message()
+                 << "width=" << width << ", height=" << height);
+    const uint8_t src = 0;
+
+    EXPECT_EQ(&src,
+              kleidicv::get_yuv420sp_uv_plane(&src, kMaxSize, width, height));
+    EXPECT_EQ(nullptr, kleidicv::get_yuv420sp_uv_plane(nullptr, kMaxSize, width,
+                                                       height));
+  }
+}
+
+TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbEmptyImages) {
+  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+  constexpr uint8_t kUntouched = 0xFE;
+
+  // Public APIs return before reaching this internal empty-image guard.
+  for (auto shape :
+       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
+        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
+        std::array<size_t, 2>{kMaxSize, 0}}) {
+    const size_t width = shape[0];
+    const size_t height = shape[1];
+    SCOPED_TRACE(testing::Message()
+                 << "width=" << width << ", height=" << height);
+    const uint8_t src_y = 0;
+    const uint8_t src_uv = 0;
+    uint8_t dst = kUntouched;
+
+    EXPECT_EQ(KLEIDICV_OK, kleidicv_yuv420sp_to_rgb_u8(
+                               &src_y, kMaxSize, &src_uv, kMaxSize, &dst,
+                               kMaxSize, width, height, KLEIDICV_NV12_TO_RGB));
+    EXPECT_EQ(kUntouched, dst);
+    EXPECT_EQ(KLEIDICV_OK, kleidicv_yuv420sp_to_rgb_u8(
+                               nullptr, kMaxSize, nullptr, kMaxSize, nullptr,
+                               kMaxSize, width, height, KLEIDICV_NV12_TO_RGB));
+  }
+}

@@ -5,8 +5,9 @@
 #ifndef KLEIDICV_RGB_TO_YUV420_SC_H
 #define KLEIDICV_RGB_TO_YUV420_SC_H
 
-#include <algorithm>
+#include <functional>
 
+#include "kleidicv/conversions/yuv420.h"
 #include "kleidicv/sve2.h"
 #include "yuv42x_coefficients.h"
 
@@ -23,8 +24,12 @@ class RGBxorBGRxToYUV420 {
       const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
       uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
       bool v_first, size_t begin, size_t end) KLEIDICV_STREAMING {
-    size_t row_begin = begin * 2;
-    size_t row_end = std::min<size_t>(height, end * 2);
+    if (width == 0 || height == 0) {
+      return KLEIDICV_OK;
+    }
+
+    size_t row_begin = yuv420_luma_row(begin, height);
+    size_t row_end = yuv420_luma_row(end, height);
     const uint8_t *src_row = nullptr;
     uint8_t *y_row = nullptr;
     uint8_t *u_row = nullptr;
@@ -37,8 +42,8 @@ class RGBxorBGRxToYUV420 {
         if constexpr (kInterleave) {
           u_row = uv_dst + uv_stride * (h / 2);
         } else {
-          u_row =
-              uv_dst + uv_stride * (h / 4) + ((h / 2) % 2) * ((width + 1) / 2);
+          const size_t chroma_width = width / 2 + width % 2;
+          u_row = uv_dst + uv_stride * (h / 4) + ((h / 2) % 2) * chroma_width;
           // Pointer to the start of the V plane.
           // The V plane follows the U plane. Both U and V planes are
           // subsampled at a 2:1 vertical ratio (i.e., each has
@@ -50,8 +55,9 @@ class RGBxorBGRxToYUV420 {
           // the V plane position. The formula used here accounts for this by
           // adjusting based on row parity, assuming consistent memory layout
           // across the Y, U, and V planes.
-          v_row = uv_dst + uv_stride * ((h + height + 1) / 4) +
-                  (((h + height + 1) / 2) % 2) * ((width + 1) / 2);
+          const size_t v_half_row = h / 2 + yuv420_chroma_height(height);
+          v_row = uv_dst + uv_stride * (v_half_row / 2) +
+                  (v_half_row % 2) * chroma_width;
         }
       }
 

@@ -142,8 +142,8 @@ kleidicv_error_t yuv2rgbx_operation(OperationType &operation,
 
   // Compute the actual row range in the Y plane (full resolution).
   // Since each UV row maps to 2 Y rows, we double the begin/end indices.
-  size_t row_begin = begin * 2;
-  size_t row_end = std::min<size_t>(height, end * 2);
+  size_t row_begin = yuv420_luma_row(begin, height);
+  size_t row_end = yuv420_luma_row(end, height);
   size_t row_uv = begin;
 
   // UV stepping pattern: first half of row, then padded second half.

@@ -5,12 +5,15 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
+#include <limits>
 #include <vector>
 
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/utils.h"
+#include "kleidicv/conversions/rgb_to_yuv.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/utils.h"
 #include "test_config.h"
@@ -285,4 +288,35 @@ TEST_F(RGB2YUV420SpTest, ReturnsErrorForUnsupportedCombinations) {
   run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_RGB_TO_NV12);
   run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_BGRA_TO_NV12);
   run_unsupported(kleidicv_rgb_to_yuv_semiplanar_u8, KLEIDICV_RGBA_TO_NV12);
+}
+
+TEST(Yuv420StripeWorkers, RgbToSemiplanarEmptyImages) {
+  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+  constexpr uint8_t kUntouched = 0xFE;
+
+  // Public APIs return before reaching this internal empty-image guard.
+  for (auto shape :
+       {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
+        std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
+        std::array<size_t, 2>{kMaxSize, 0}}) {
+    const size_t width = shape[0];
+    const size_t height = shape[1];
+    SCOPED_TRACE(testing::Message()
+                 << "width=" << width << ", height=" << height);
+    const size_t end = kleidicv::yuv420_chroma_height(height);
+    const uint8_t src = 0;
+    uint8_t y_dst = kUntouched;
+    uint8_t uv_dst = kUntouched;
+
+    EXPECT_EQ(KLEIDICV_OK,
+              kleidicv_rgb_to_yuv420sp_stripe_u8(
+                  &src, kMaxSize, &y_dst, kMaxSize, &uv_dst, kMaxSize, width,
+                  height, KLEIDICV_RGB_TO_NV12, 0, end));
+    EXPECT_EQ(kUntouched, y_dst);
+    EXPECT_EQ(kUntouched, uv_dst);
+    EXPECT_EQ(KLEIDICV_OK,
+              kleidicv_rgb_to_yuv420sp_stripe_u8(
+                  nullptr, kMaxSize, nullptr, kMaxSize, nullptr, kMaxSize,
+                  width, height, KLEIDICV_RGB_TO_NV12, 0, end));
+  }
 }

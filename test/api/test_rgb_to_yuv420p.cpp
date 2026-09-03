@@ -5,12 +5,15 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
+#include <limits>
 #include <vector>
 
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/utils.h"
+#include "kleidicv/conversions/rgb_to_yuv.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 
