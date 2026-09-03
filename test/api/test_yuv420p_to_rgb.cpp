@@ -236,3 +236,57 @@ TEST_F(YUV420p2RGBTest, ReturnsErrorForUnsupportedCombinations) {
   run_unsupported(kleidicv_yuv_to_rgb_u8, KLEIDICV_IYUV_TO_BGRA);
   run_unsupported(kleidicv_yuv_to_rgb_u8, KLEIDICV_IYUV_TO_RGBA);
 }
+
+TEST(Yuv420StripeWorkers, PlanarToRgbHonorsChromaRowRange) {
+  constexpr size_t kWidth = 2;
+  constexpr size_t kHeight = 6;
+  constexpr size_t kChromaHeight = 3;
+  constexpr size_t kSrcStride = 2;
+  constexpr size_t kRgbRowBytes = 3 * kWidth;
+  constexpr size_t kDstStride = kRgbRowBytes + 2;
+  constexpr size_t kBegin = 1;
+  constexpr size_t kEnd = 2;
+  constexpr size_t kLumaBegin = 2;
+  constexpr size_t kLumaEnd = 4;
+  constexpr size_t kStripeHeight = kLumaEnd - kLumaBegin;
+  constexpr uint8_t kUntouched = 0xFE;
+  const std::array<uint8_t, kSrcStride*(kHeight + kChromaHeight)> src = {
+      16,  32,  48,  64,  80, 96,  112, 128, 144,
+      160, 176, 192, 128, 90, 166, 128, 166, 90};
+  // A 2x2 IYUV image: luma rows 2 and 3 followed by chroma samples U1 and V1.
+  // The full image's chroma planes cannot be sliced by offsetting src alone.
+  const std::array<uint8_t, kSrcStride*(kStripeHeight + kEnd - kBegin)>
+      stripe_src = {src[kLumaBegin * kSrcStride],
+                    src[kLumaBegin * kSrcStride + 1],
+                    src[(kLumaBegin + 1) * kSrcStride],
+                    src[(kLumaBegin + 1) * kSrcStride + 1],
+                    src[kSrcStride * kHeight + kBegin],
+                    src[kSrcStride * kHeight + kChromaHeight + kBegin]};
+  std::array<uint8_t, kRgbRowBytes * kStripeHeight> expected = {};
+  std::array<uint8_t, kDstStride * kHeight> actual = {};
+  actual.fill(kUntouched);
+
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv::yuv420p_to_rgb_validate(src.data(), actual.data(), kWidth,
+                                              kHeight, KLEIDICV_IYUV_TO_RGB));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_yuv_to_rgb_u8(stripe_src.data(), kSrcStride,
+                                   expected.data(), kRgbRowBytes, kWidth,
+                                   kStripeHeight, KLEIDICV_IYUV_TO_RGB));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_yuv420p_to_rgb_stripe_u8(
+                src.data(), kSrcStride, actual.data(), kDstStride, kWidth,
+                kHeight, KLEIDICV_IYUV_TO_RGB, kBegin, kEnd));
+
+  for (size_t index = 0; index < actual.size(); ++index) {
+    SCOPED_TRACE(index);
+    const size_t row = index / kDstStride;
+    const size_t column = index % kDstStride;
+    if (row >= kLumaBegin && row < kLumaEnd && column < kRgbRowBytes) {
+      EXPECT_EQ(expected[(row - kLumaBegin) * kRgbRowBytes + column],
+                actual[index]);
+    } else {
+      EXPECT_EQ(kUntouched, actual[index]);
+    }
+  }
+}

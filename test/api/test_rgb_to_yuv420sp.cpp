@@ -320,3 +320,65 @@ TEST(Yuv420StripeWorkers, RgbToSemiplanarEmptyImages) {
                   width, height, KLEIDICV_RGB_TO_NV12, 0, end));
   }
 }
+
+TEST(Yuv420StripeWorkers, RgbToSemiplanarHonorsChromaRowRange) {
+  constexpr size_t kWidth = 2;
+  constexpr size_t kHeight = 6;
+  constexpr size_t kChromaWidth = 1;
+  constexpr size_t kChromaHeight = 3;
+  constexpr size_t kSrcStride = 6;
+  constexpr size_t kDstStride = 4;
+  constexpr size_t kBegin = 1;
+  constexpr size_t kEnd = 2;
+  constexpr size_t kLumaBegin = 2;
+  constexpr size_t kLumaEnd = 4;
+  constexpr size_t kStripeHeight = kLumaEnd - kLumaBegin;
+  constexpr size_t kUvRowBytes = 2 * kChromaWidth;
+  constexpr uint8_t kUntouched = 0xFE;
+  const std::array<uint8_t, kSrcStride * kHeight> src = {
+      255, 0,   0,   0,   255, 255, 32, 64, 96, 128, 160, 192,
+      0,   255, 0,   255, 0,   255, 16, 48, 80, 112, 144, 176,
+      0,   0,   255, 255, 255, 0,   24, 56, 88, 120, 152, 184};
+  std::array<uint8_t, kWidth * kStripeHeight> expected_y = {};
+  std::array<uint8_t, kUvRowBytes*(kEnd - kBegin)> expected_uv = {};
+  std::array<uint8_t, kDstStride * kHeight> actual_y = {};
+  std::array<uint8_t, kDstStride * kChromaHeight> actual_uv = {};
+  actual_y.fill(kUntouched);
+  actual_uv.fill(kUntouched);
+
+  ASSERT_EQ(KLEIDICV_OK, kleidicv::rgb_to_yuv420sp_validate(
+                             src.data(), actual_y.data(), actual_uv.data(),
+                             kWidth, kHeight, KLEIDICV_RGB_TO_NV12));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_rgb_to_yuv_semiplanar_u8(
+                src.data() + kLumaBegin * kSrcStride, kSrcStride,
+                expected_y.data(), kWidth, expected_uv.data(), kUvRowBytes,
+                kWidth, kStripeHeight, KLEIDICV_RGB_TO_NV12));
+  ASSERT_EQ(KLEIDICV_OK, kleidicv_rgb_to_yuv420sp_stripe_u8(
+                             src.data(), kSrcStride, actual_y.data(),
+                             kDstStride, actual_uv.data(), kDstStride, kWidth,
+                             kHeight, KLEIDICV_RGB_TO_NV12, kBegin, kEnd));
+
+  for (size_t index = 0; index < actual_y.size(); ++index) {
+    SCOPED_TRACE(index);
+    const size_t row = index / kDstStride;
+    const size_t column = index % kDstStride;
+    if (row >= kLumaBegin && row < kLumaEnd && column < kWidth) {
+      EXPECT_EQ(expected_y[(row - kLumaBegin) * kWidth + column],
+                actual_y[index]);
+    } else {
+      EXPECT_EQ(kUntouched, actual_y[index]);
+    }
+  }
+  for (size_t index = 0; index < actual_uv.size(); ++index) {
+    SCOPED_TRACE(index);
+    const size_t row = index / kDstStride;
+    const size_t column = index % kDstStride;
+    if (row >= kBegin && row < kEnd && column < kUvRowBytes) {
+      EXPECT_EQ(expected_uv[(row - kBegin) * kUvRowBytes + column],
+                actual_uv[index]);
+    } else {
+      EXPECT_EQ(kUntouched, actual_uv[index]);
+    }
+  }
+}
