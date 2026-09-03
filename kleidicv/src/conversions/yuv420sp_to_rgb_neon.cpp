@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -77,11 +77,6 @@ kleidicv_error_t yuv2rgbx_operation(
     OperationType &operation, const ScalarType *src_y, size_t src_y_stride,
     const ScalarType *src_uv, size_t src_uv_stride, ScalarType *dst,
     size_t dst_stride, size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src_y, src_y_stride, height);
-  CHECK_POINTER_AND_STRIDE(src_uv, src_uv_stride, (height + 1) / 2);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
   Rectangle rect{width, height};
   ParallelRows y_rows{src_y, src_y_stride};
   Rows uv_rows{src_uv, src_uv_stride};
@@ -146,17 +141,12 @@ kleidicv_error_t yuv420sp_to_rgb_u8(const uint8_t *src_y, size_t src_y_stride,
                                 src_uv_stride, dst, dst_stride, width, height);
     }
 
-    case KLEIDICV_NV12_TO_RGBA: {
+    default: {  // KLEIDICV_NV12_TO_RGBA
       YUVSpToRGBA operation{false};
       return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
                                 src_uv_stride, dst, dst_stride, width, height);
     }
-
-    default:
-      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-
-  return KLEIDICV_ERROR_NOT_IMPLEMENTED;
 }
 
 }  // namespace kleidicv::neon

@@ -558,13 +558,22 @@ kleidicv_error_t kleidicv_thread_yuv_to_rgb_u8(
   }
 
   if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP) {
-    if (src == nullptr) {
-      return KLEIDICV_ERROR_NULL_POINTER;
+    // Preserve the threaded API's null-pointer precedence over format errors.
+    CHECK_POINTERS(src, dst);
+    if (kleidicv_error_t err = kleidicv::yuv420sp_to_rgb_validate(
+            src, src_stride, dst, dst_stride, width, height, color_format)) {
+      return err;
     }
+
     const uint8_t *src_uv = src + src_stride * height;
     return kleidicv_thread_yuv_semiplanar_to_rgb_u8(
         src, src_stride, src_uv, src_stride, dst, dst_stride, width, height,
         color_format, mt);
+  }
+
+  if (kleidicv_error_t err = kleidicv::yuv420p_to_rgb_validate(
+          src, src_stride, dst, dst_stride, width, height, color_format)) {
+    return err;
   }
 
   auto callback = [=](size_t begin, size_t end) {
@@ -631,15 +640,22 @@ kleidicv_error_t kleidicv_thread_yuv_semiplanar_to_rgb_u8(
     size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
     size_t height, kleidicv_color_conversion_t color_format,
     kleidicv_thread_multithreading mt) {
+  // Preserve the threaded API's null-pointer precedence over format errors.
   if (src_y == nullptr || src_uv == nullptr || dst == nullptr) {
     return KLEIDICV_ERROR_NULL_POINTER;
+  }
+
+  if (kleidicv_error_t err = kleidicv::yuv_semiplanar_to_rgb_validate(
+          src_y, src_y_stride, src_uv, src_uv_stride, dst, dst_stride, width,
+          height, color_format)) {
+    return err;
   }
 
   auto callback = [=](size_t begin, size_t end) {
     size_t row_begin = begin * 2;
     size_t row_end = std::min<size_t>(height, end * 2);
     size_t row_uv = begin;
-    return kleidicv_yuv_semiplanar_to_rgb_u8(
+    return kleidicv_yuv420sp_to_rgb_u8(
         src_y + row_begin * src_y_stride, src_y_stride,
         src_uv + row_uv * src_uv_stride, src_uv_stride,
         dst + row_begin * dst_stride, dst_stride, width, row_end - row_begin,

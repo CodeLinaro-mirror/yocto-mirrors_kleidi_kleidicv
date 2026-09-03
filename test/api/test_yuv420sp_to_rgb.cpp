@@ -298,3 +298,38 @@ TEST(YuvSp, NV21_TO_BGRA_VECTOR) {
                                KLEIDICV_NV21_TO_BGRA);
   yuv_test.execute_vector_test(kleidicv_yuv_to_rgb_u8, KLEIDICV_NV21_TO_BGRA);
 }
+
+namespace {
+
+TEST(Yuv420Validation, SplitSemiplanarToRgbPointersAndPrecedence) {
+  uint8_t src_y = 0;
+  uint8_t src_uv = 0;
+  uint8_t dst = 0;
+  constexpr auto kUnsupportedFormat = static_cast<kleidicv_color_conversion_t>(
+      KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP |
+      KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
+
+  for (auto function : {kleidicv_yuv_semiplanar_to_rgb_u8,
+                        kleidicv_yuv_semiplanar_to_rgb_u8_sme}) {
+    EXPECT_EQ(
+        KLEIDICV_ERROR_NULL_POINTER,
+        function(nullptr, 1, &src_uv, 1, &dst, 1, 2, 2, KLEIDICV_NV12_TO_RGB));
+    EXPECT_EQ(
+        KLEIDICV_ERROR_NULL_POINTER,
+        function(&src_y, 1, nullptr, 1, &dst, 1, 2, 2, KLEIDICV_NV12_TO_RGB));
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              function(&src_y, 1, &src_uv, 1, nullptr, 1, 2, 2,
+                       KLEIDICV_NV12_TO_RGB));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              function(&src_y, 1, &src_uv, 1, &dst, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, 2, KLEIDICV_NV12_TO_RGB));
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              function(nullptr, 1, nullptr, 1, nullptr, 1,
+                       KLEIDICV_MAX_IMAGE_PIXELS, 2, kUnsupportedFormat));
+    EXPECT_EQ(
+        KLEIDICV_ERROR_NOT_IMPLEMENTED,
+        function(&src_y, 1, &src_uv, 1, &dst, 1, 0, 1, kUnsupportedFormat));
+  }
+}
+
+}  // namespace

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2025 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -103,10 +103,6 @@ kleidicv_error_t yuv2rgbx_operation(OperationType &operation,
                                     ScalarType *dst, size_t dst_stride,
                                     size_t width, size_t height, size_t begin,
                                     size_t end) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, (height * 3 + 1) / 2);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
   // Pointer to the start of the U plane.
   // Since `src` points to a planar YUV buffer, the Y plane comes first,
   // occupying `src_stride * height` bytes.
@@ -255,17 +251,12 @@ kleidicv_error_t yuv420p_to_rgb_stripe_u8(
                                 width, height, begin, end);
     }
 
-    case KLEIDICV_IYUV_TO_RGBA: {
+    default: {  // KLEIDICV_IYUV_TO_RGBA
       YUVpToRGBA operation{false};
       return yuv2rgbx_operation(operation, src, src_stride, dst, dst_stride,
                                 width, height, begin, end);
     }
-
-    default:
-      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-
-  return KLEIDICV_ERROR_NOT_IMPLEMENTED;
 }
 
 }  // namespace kleidicv::neon

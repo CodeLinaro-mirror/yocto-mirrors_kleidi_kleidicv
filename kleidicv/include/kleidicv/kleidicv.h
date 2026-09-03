@@ -1656,19 +1656,15 @@ kleidicv_error_t kleidicv_yuv_to_rgb_u8_sme(
 ///                      source YUV layout (e.g., I420, YV12, YUV444) and the
 ///                      destination RGB(A)/BGR(A) format.
 ///                      Must be one of @ref kleidicv_color_conversion_t.
-KLEIDICV_API_DECLARATION(kleidicv_yuv_semiplanar_to_rgb_u8,
-                         const uint8_t *src_y, size_t src_y_stride,
-                         const uint8_t *src_uv, size_t src_uv_stride,
-                         uint8_t *dst, size_t dst_stride, size_t width,
-                         size_t height,
-                         kleidicv_color_conversion_t color_format);
+kleidicv_error_t kleidicv_yuv_semiplanar_to_rgb_u8(
+    const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
+    size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
+    size_t height, kleidicv_color_conversion_t color_format);
 /// @copydoc kleidicv_yuv_semiplanar_to_rgb_u8
-KLEIDICV_API_DECLARATION(kleidicv_yuv_semiplanar_to_rgb_u8_sme,
-                         const uint8_t *src_y, size_t src_y_stride,
-                         const uint8_t *src_uv, size_t src_uv_stride,
-                         uint8_t *dst, size_t dst_stride, size_t width,
-                         size_t height,
-                         kleidicv_color_conversion_t color_format);
+kleidicv_error_t kleidicv_yuv_semiplanar_to_rgb_u8_sme(
+    const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
+    size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
+    size_t height, kleidicv_color_conversion_t color_format);
 
 /// Converts an interleaved RGB-like image to YUV image (planar or interleaved).
 /// All channels are 8-bit wide. If the source format includes an alpha channel,

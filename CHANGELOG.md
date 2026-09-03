@@ -15,6 +15,12 @@ This changelog aims to follow the guiding principles of
 
 ## 26.12 - not yet released
 
+### Changed
+- `kleidicv_yuv_semiplanar_to_rgb_u8` and
+  `kleidicv_yuv_semiplanar_to_rgb_u8_sme` are now ordinary functions instead of
+  function pointers. This breaks ABI compatibility. Applications using these
+  APIs must be rebuilt, including applications that dynamically link KleidiCV.
+
 ## 26.09 - 2026-09-30
 
 ### Added

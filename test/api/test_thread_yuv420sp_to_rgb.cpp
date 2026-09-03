@@ -5,6 +5,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <thread>
 #include <type_traits>
 
@@ -13,6 +14,7 @@
 #include "kleidicv/kleidicv.h"
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
+#include "thread_validation.h"
 
 // Tuple of width, height, thread count.
 typedef std::tuple<unsigned, unsigned, unsigned> P;
@@ -220,3 +222,158 @@ INSTANTIATE_TEST_SUITE_P(, YuvSpThread,
                                          P{2, 1, 2}, P{2, 2, 1}, P{1, 3, 2},
                                          P{2, 3, 1}, P{6, 4, 1}, P{4, 5, 2},
                                          P{2, 6, 3}, P{1, 7, 4}, P{12, 34, 5}));
+
+namespace {
+
+using Yuv420SpToRgbValidation = test::ThreadValidation;
+
+constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+TEST_F(Yuv420SpToRgbValidation, PackedSemiplanarToRgb) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  constexpr auto kUnsupportedFormat = static_cast<kleidicv_color_conversion_t>(
+      KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP |
+      KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
+
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, &dst, 1, 2, 2,
+                                    KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, nullptr, 1, 2, 2,
+                                    KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
+                                            &src, 1, &dst, 1, kLargeWidth, 2,
+                                            KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_yuv_to_rgb_u8(nullptr, 1, &dst, 1, 2, 2,
+                                    kUnsupportedFormat, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, nullptr, 1, 2, 2,
+                                    kUnsupportedFormat, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, kLargeWidth, 2,
+                                    kUnsupportedFormat, scheduler()));
+}
+TEST_F(Yuv420SpToRgbValidation, SplitSemiplanarToRgb) {
+  uint8_t src_y = 0;
+  uint8_t src_uv = 0;
+  uint8_t dst = 0;
+  constexpr auto kUnsupportedFormat = static_cast<kleidicv_color_conversion_t>(
+      KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP |
+      KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
+
+  for (auto format : {KLEIDICV_NV12_TO_RGB, kUnsupportedFormat}) {
+    expect_rejected(
+        KLEIDICV_ERROR_NULL_POINTER,
+        kleidicv_thread_yuv_semiplanar_to_rgb_u8(nullptr, 1, &src_uv, 1, &dst,
+                                                 1, 2, 2, format, scheduler()));
+    expect_rejected(
+        KLEIDICV_ERROR_NULL_POINTER,
+        kleidicv_thread_yuv_semiplanar_to_rgb_u8(&src_y, 1, nullptr, 1, &dst, 1,
+                                                 2, 2, format, scheduler()));
+    expect_rejected(
+        KLEIDICV_ERROR_NULL_POINTER,
+        kleidicv_thread_yuv_semiplanar_to_rgb_u8(&src_y, 1, &src_uv, 1, nullptr,
+                                                 1, 2, 2, format, scheduler()));
+  }
+
+  // Each two-row slice fits the image-size limit, but the complete image does
+  // not. Reject it before the scheduler can split it into valid-sized slices.
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      &src_y, 1, &src_uv, 1, &dst, 1, kLargeWidth / 2, 4,
+                      KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      &src_y, 1, &src_uv, 1, &dst, 1, kLargeWidth, 2,
+                      kUnsupportedFormat, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      &src_y, 1, &src_uv, 1, &dst, 1, 0, 1, kUnsupportedFormat,
+                      scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                      &src_y, 1, &src_uv, 1, &dst, 1, 1, 0, kUnsupportedFormat,
+                      scheduler()));
+  expect_dispatched(2, kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                           &src_y, 1, &src_uv, 1, &dst, 1, 2, 3,
+                           KLEIDICV_NV12_TO_RGB, scheduler()));
+}
+TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbHonorsChromaRowRange) {
+  constexpr size_t kWidth = 18;
+  constexpr size_t kHeight = 7;
+  constexpr size_t kChromaHeight = 4;
+  constexpr size_t kYStride = 20;
+  constexpr size_t kUvStride = 24;
+  constexpr size_t kDstStride = kWidth * 4 + 4;
+  constexpr uint8_t kUntouched = 0xFE;
+  std::array<uint8_t, kYStride * kHeight> src_y = {};
+  std::array<uint8_t, kUvStride * kChromaHeight> src_uv = {};
+  std::array<uint8_t, kDstStride * kHeight> expected = {};
+  std::array<uint8_t, kDstStride * kHeight> actual = {};
+
+  for (size_t index = 0; index < src_y.size(); ++index) {
+    src_y[index] = static_cast<uint8_t>(index);
+  }
+  for (size_t index = 0; index < src_uv.size(); ++index) {
+    src_uv[index] = static_cast<uint8_t>(3 * index + 17);
+  }
+
+  for (auto format : {KLEIDICV_NV12_TO_RGB, KLEIDICV_NV21_TO_RGBA}) {
+    expected.fill(kUntouched);
+    ASSERT_EQ(KLEIDICV_OK,
+              kleidicv_yuv_semiplanar_to_rgb_u8(
+                  src_y.data(), kYStride, src_uv.data(), kUvStride,
+                  expected.data(), kDstStride, kWidth, kHeight, format));
+
+    // Exercise both an interior stripe and a stripe ending on the odd last row.
+    for (size_t end : {size_t{3}, kChromaHeight}) {
+      actual.fill(kUntouched);
+      auto expected_partial = actual;
+
+      const size_t row_end = end == kChromaHeight ? kHeight : end * 2;
+      for (size_t row = 2; row < row_end; ++row) {
+        for (size_t column = 0; column < kDstStride; ++column) {
+          size_t index = row * kDstStride + column;
+          expected_partial[index] = expected[index];
+        }
+      }
+      struct StripeContext {
+        size_t end;
+        decltype(actual) *actual_output;
+        const decltype(expected_partial) *partial_output;
+      } context{end, &actual, &expected_partial};
+      const kleidicv_thread_multithreading mt{
+          [](kleidicv_thread_callback callback, void *callback_data,
+             void *parallel_data, size_t task_count) {
+            EXPECT_EQ(size_t{kChromaHeight}, task_count);
+            const auto &context =
+                *static_cast<const StripeContext *>(parallel_data);
+            if (auto error = callback(1, context.end, callback_data)) {
+              return error;
+            }
+            EXPECT_EQ(*context.partial_output, *context.actual_output);
+            if (auto error = callback(0, 1, callback_data)) {
+              return error;
+            }
+            return context.end == task_count
+                       ? KLEIDICV_OK
+                       : callback(context.end, task_count, callback_data);
+          },
+          &context};
+      ASSERT_EQ(KLEIDICV_OK,
+                kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                    src_y.data(), kYStride, src_uv.data(), kUvStride,
+                    actual.data(), kDstStride, kWidth, kHeight, format, mt));
+      EXPECT_EQ(expected, actual);
+    }
+  }
+}
+
+}  // namespace
