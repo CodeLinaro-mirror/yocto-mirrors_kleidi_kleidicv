@@ -45,8 +45,26 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
   // YUV420 uses 2x2 chroma blocks spanning adjacent rows, so the stripe API
   // provides each invocation with contiguous rows and the proper per-plane
   // offsets for that slice.
+  if (kleidicv_error_t err = rgb_to_yuv420p_validate(
+          src, src_stride, dst, dst_stride, width, height, color_format)) {
+    return err;
+  }
   return StripeFunction(src, src_stride, dst, dst_stride, width, height,
                         color_format, 0, height);
+}
+
+template <auto &StripeFunction>
+kleidicv_error_t rgb_to_yuv_semiplanar_u8(
+    const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
+    uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
+    kleidicv_color_conversion_t color_format) {
+  if (kleidicv_error_t err =
+          rgb_to_yuv420sp_validate(src, src_stride, y_dst, y_stride, uv_dst,
+                                   uv_stride, width, height, color_format)) {
+    return err;
+  }
+  return StripeFunction(src, src_stride, y_dst, y_stride, uv_dst, uv_stride,
+                        width, height, color_format, 0, height);
 }
 
 }  // namespace kleidicv
@@ -57,18 +75,19 @@ kleidicv_error_t kleidicv_rgb_to_yuv_semiplanar_u8(
     const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
     uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
     kleidicv_color_conversion_t color_format) {
-  return kleidicv_rgb_to_yuv420sp_stripe_u8(src, src_stride, y_dst, y_stride,
-                                            uv_dst, uv_stride, width, height,
-                                            color_format, 0, height);
+  return kleidicv::rgb_to_yuv_semiplanar_u8<kleidicv_rgb_to_yuv420sp_stripe_u8>(
+      src, src_stride, y_dst, y_stride, uv_dst, uv_stride, width, height,
+      color_format);
 }
 
 kleidicv_error_t kleidicv_rgb_to_yuv_semiplanar_u8_sme(
     const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
     uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
     kleidicv_color_conversion_t color_format) {
-  return kleidicv_rgb_to_yuv420sp_stripe_u8_sme(
-      src, src_stride, y_dst, y_stride, uv_dst, uv_stride, width, height,
-      color_format, 0, height);
+  return kleidicv::rgb_to_yuv_semiplanar_u8<
+      kleidicv_rgb_to_yuv420sp_stripe_u8_sme>(src, src_stride, y_dst, y_stride,
+                                              uv_dst, uv_stride, width, height,
+                                              color_format);
 }
 
 kleidicv_error_t kleidicv_rgb_to_yuv_u8(

@@ -580,6 +580,12 @@ kleidicv_error_t kleidicv_thread_rgb_to_yuv_semiplanar_u8(
     uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
     kleidicv_color_conversion_t color_format,
     kleidicv_thread_multithreading mt) {
+  if (kleidicv_error_t err = kleidicv::rgb_to_yuv420sp_validate(
+          src, src_stride, y_dst, y_stride, uv_dst, uv_stride, width, height,
+          color_format)) {
+    return err;
+  }
+
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_rgb_to_yuv420sp_stripe_u8(src, src_stride, y_dst, y_stride,
                                               uv_dst, uv_stride, width, height,
@@ -605,6 +611,11 @@ kleidicv_error_t kleidicv_thread_rgb_to_yuv_u8(
     return kleidicv_thread_unary_op_impl(kleidicv_rgb_to_yuv422_u8, mt, src,
                                          src_stride, dst, dst_stride, width,
                                          height, color_format);
+  }
+
+  if (kleidicv_error_t err = kleidicv::rgb_to_yuv420p_validate(
+          src, src_stride, dst, dst_stride, width, height, color_format)) {
+    return err;
   }
 
   auto callback = [=](size_t begin, size_t end) {

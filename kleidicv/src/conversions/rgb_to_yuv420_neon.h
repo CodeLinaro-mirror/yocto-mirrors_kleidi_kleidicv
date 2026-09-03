@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2025 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -42,12 +42,11 @@ class RGBxorBGRxToYUV420 {
               uv_dst + uv_stride * (h / 4) + ((h / 2) % 2) * ((width + 1) / 2);
           // Pointer to the start of the V plane.
           // The V plane follows the U plane. Both U and V planes are
-          // subsampled at a 2:1 vertical ratio (i.e., each has height / 2
-          // rows) and stored in a single contiguous chroma region.
-          // Depending on image height and stride, the starting offset
-          // of V may require adjustment, so a
-          // fractional offset (in rows) is applied to calculate the V plane
-          // position.
+          // subsampled at a 2:1 vertical ratio (i.e., each has
+          // height / 2 + height % 2 rows) and stored in a single contiguous
+          // chroma region. Depending on image height and stride, the starting
+          // offset of V may require adjustment, so a fractional offset (in
+          // rows) is applied to calculate the V plane position.
           v_row = uv_dst + uv_stride * ((h + height + 1) / 4) +
                   (((h + height + 1) / 2) % 2) * ((width + 1) / 2);
         }

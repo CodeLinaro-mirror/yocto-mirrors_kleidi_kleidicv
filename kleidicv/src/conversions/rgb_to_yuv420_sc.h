@@ -41,15 +41,15 @@ class RGBxorBGRxToYUV420 {
               uv_dst + uv_stride * (h / 4) + ((h / 2) % 2) * ((width + 1) / 2);
           // Pointer to the start of the V plane.
           // The V plane follows the U plane. Both U and V planes are
-          // subsampled at a 2:1 vertical ratio (i.e., each has height / 2
-          // rows), and are often stored in a single contiguous chroma region in
-          // memory. Depending on image height and stride, the starting offset
-          // of V may require adjustment to maintain correct alignment. In
-          // particular, the chroma rows may not align perfectly, so a
-          // fractional offset (in rows) is applied to calculate the V plane
-          // position. The formula used here accounts for this by adjusting
-          // based on row parity, assuming consistent memory layout across the
-          // Y, U, and V planes.
+          // subsampled at a 2:1 vertical ratio (i.e., each has
+          // height / 2 + height % 2 rows), and are often stored in a single
+          // contiguous chroma region in memory. Depending on image height and
+          // stride, the starting offset of V may require adjustment to maintain
+          // correct alignment. In particular, the chroma rows may not align
+          // perfectly, so a fractional offset (in rows) is applied to calculate
+          // the V plane position. The formula used here accounts for this by
+          // adjusting based on row parity, assuming consistent memory layout
+          // across the Y, U, and V planes.
           v_row = uv_dst + uv_stride * ((h + height + 1) / 4) +
                   (((h + height + 1) / 2) % 2) * ((width + 1) / 2);
         }

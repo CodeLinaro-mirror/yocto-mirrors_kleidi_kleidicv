@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2025 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -15,6 +15,7 @@
 #include "kleidicv_thread/kleidicv_thread.h"
 #include "multithreading_fake.h"
 #include "test_config.h"
+#include "thread_validation.h"
 
 // Tuple of width, height, thread count.
 typedef std::tuple<unsigned, unsigned, unsigned> P;
@@ -167,3 +168,49 @@ INSTANTIATE_TEST_SUITE_P(, RgbToYuv420SpThread,
                                          P{2, 3, 1}, P{6, 4, 1}, P{4, 5, 2},
                                          P{2, 6, 3}, P{1, 7, 4}, P{12, 34, 5},
                                          P{12, 37, 5}, P{2, 1000, 2}));
+
+namespace {
+
+using RgbToYuv420SpValidation = test::ThreadValidation;
+
+constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+TEST_F(RgbToYuv420SpValidation, RgbToSemiplanar) {
+  uint8_t src = 0;
+  uint8_t y_dst = 0;
+  uint8_t uv_dst = 0;
+  constexpr auto kUnsupportedFormat = static_cast<kleidicv_color_conversion_t>(
+      KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP |
+      KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST);
+
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      nullptr, 1, &y_dst, 1, &uv_dst, 1, 2, 2,
+                      KLEIDICV_RGB_TO_NV12, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      &src, 1, nullptr, 1, &uv_dst, 1, 2, 2,
+                      KLEIDICV_RGB_TO_NV12, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      &src, 1, &y_dst, 1, nullptr, 1, 2, 2,
+                      KLEIDICV_RGB_TO_NV12, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      &src, 1, &y_dst, 1, &uv_dst, 1, kLargeWidth, 2,
+                      KLEIDICV_RGB_TO_NV12, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      &src, 1, &y_dst, 1, &uv_dst, 1, 2, 2, kUnsupportedFormat,
+                      scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      &src, 1, &y_dst, 1, &uv_dst, 1, kLargeWidth, 2,
+                      kUnsupportedFormat, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_rgb_to_yuv_semiplanar_u8(
+                      nullptr, 1, &y_dst, 1, &uv_dst, 1, 2, 2,
+                      kUnsupportedFormat, scheduler()));
+}
+
+}  // namespace
