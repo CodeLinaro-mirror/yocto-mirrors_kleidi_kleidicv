@@ -304,6 +304,7 @@ static inline int kleidicv_threshold_with_fallback(
 #endif  // KLEIDICV_ENABLE_ALL_OPENCV_HAL
 
 // sepFilter
+#ifdef cv_hal_sepFilter_stateless
 static inline int kleidicv_sepFilter_with_fallback(
     const uchar *src_data, size_t src_step, int src_type, uchar *dst_data,
     size_t dst_step, int dst_type, int width, int height, int full_width,
@@ -318,6 +319,7 @@ static inline int kleidicv_sepFilter_with_fallback(
 }
 #undef cv_hal_sepFilter_stateless
 #define cv_hal_sepFilter_stateless kleidicv_sepFilter_with_fallback
+#endif
 
 // gaussian_blur_binomial
 static inline int kleidicv_gaussian_blur_binomial_with_fallback(
@@ -351,6 +353,7 @@ static inline int kleidicv_gaussian_blur_with_fallback(
 #define cv_hal_gaussianBlur kleidicv_gaussian_blur_with_fallback
 
 // morphology
+#ifdef cv_hal_morph_stateless
 static inline int kleidicv_morphology_with_fallback(
     int operation, const uchar *src_data, size_t src_step, int src_type,
     uchar *dst_data, size_t dst_step, int dst_type, int width, int height,
@@ -370,6 +373,7 @@ static inline int kleidicv_morphology_with_fallback(
 }
 #undef cv_hal_morph_stateless
 #define cv_hal_morph_stateless kleidicv_morphology_with_fallback
+#endif
 
 // resize
 static inline int kleidicv_resize_with_fallback(
@@ -422,6 +426,7 @@ static inline int kleidicv_canny_with_fallback(
 #define cv_hal_canny kleidicv_canny_with_fallback
 #endif  // KLEIDICV_EXPERIMENTAL_FEATURE_CANNY
 
+#ifdef cv_hal_remap16s
 static inline int kleidicv_remap_s16_with_fallback(
     int src_type, const uchar *src_data, size_t src_step, int src_width,
     int src_height, uchar *dst_data, size_t dst_step, int dst_width,
@@ -435,6 +440,7 @@ static inline int kleidicv_remap_s16_with_fallback(
 }
 #undef cv_hal_remap16s
 #define cv_hal_remap16s kleidicv_remap_s16_with_fallback
+#endif
 
 static inline int kleidicv_remap_f32_with_fallback(
     int src_type, const uchar *src_data, size_t src_step, int src_width,
@@ -510,6 +516,7 @@ static inline int kleidicv_add_padding_by_copy_with_fallback(
 
 #if KLEIDICV_ENABLE_ALL_OPENCV_HAL
 // sum
+#ifdef cv_hal_sum
 static inline int kleidicv_sum_with_fallback(const uchar *src_data,
                                              size_t src_step, int src_type,
                                              size_t width, size_t height,
@@ -519,6 +526,7 @@ static inline int kleidicv_sum_with_fallback(const uchar *src_data,
 }
 #undef cv_hal_sum
 #define cv_hal_sum kleidicv_sum_with_fallback
+#endif  // cv_hal_sum
 #endif  // KLEIDICV_ENABLE_ALL_OPENCV_HAL
 
 // flip
@@ -559,6 +567,7 @@ static inline int kleidicv_min_max_idx_with_fallback(
 #undef cv_hal_minMaxIdx
 #define cv_hal_minMaxIdx kleidicv_min_max_idx_with_fallback
 
+#ifdef cv_hal_convertScale
 static inline int kleidicv_convertTo_with_fallback(
     const uchar *src_data, size_t src_step, uchar *dst_data, size_t dst_step,
     int width, int height, int src_depth, int dst_depth, double scale,
@@ -569,6 +578,7 @@ static inline int kleidicv_convertTo_with_fallback(
 }
 #undef cv_hal_convertScale
 #define cv_hal_convertScale kleidicv_convertTo_with_fallback
+#endif
 
 // exp32f
 #undef cv_hal_exp32f
@@ -650,6 +660,7 @@ KLEIDICV_HAL_MUL(mul16s, kleidicv_saturating_multiply_s16, int16_t);
 #undef cv_hal_mul16s
 #define cv_hal_mul16s kleidicv_mul16s_with_fallback
 
+#ifdef cv_hal_inRange8u
 static inline int kleidicv_in_range_u8_with_fallback(
     const uchar *src_data, size_t src_step, uchar *dst_data, size_t dst_step,
     int dst_depth, size_t width, size_t height, int cn, uchar lower_bound,
@@ -660,7 +671,9 @@ static inline int kleidicv_in_range_u8_with_fallback(
 }
 #undef cv_hal_inRange8u
 #define cv_hal_inRange8u kleidicv_in_range_u8_with_fallback
+#endif
 
+#ifdef cv_hal_inRange32f
 static inline int kleidicv_in_range_f32_with_fallback(
     const uchar *src_data, size_t src_step, uchar *dst_data, size_t dst_step,
     int dst_depth, size_t width, size_t height, int cn, double lower_bound,
@@ -671,6 +684,7 @@ static inline int kleidicv_in_range_f32_with_fallback(
 }
 #undef cv_hal_inRange32f
 #define cv_hal_inRange32f kleidicv_in_range_f32_with_fallback
+#endif
 
 #endif  // OPENCV_CORE_HAL_REPLACEMENT_HPP
 
