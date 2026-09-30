@@ -13,6 +13,8 @@ KleidiCV uses [Calendar Versioning](https://calver.org/) with the format of `0Y.
 This changelog aims to follow the guiding principles of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 26.12 - not yet released
+
 ## 26.09 - 2026-09-30
 
 ### Added
