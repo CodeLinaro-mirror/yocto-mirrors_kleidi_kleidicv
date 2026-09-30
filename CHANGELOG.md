@@ -13,7 +13,7 @@ KleidiCV uses [Calendar Versioning](https://calver.org/) with the format of `0Y.
 This changelog aims to follow the guiding principles of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## 26.09 - not yet released
+## 26.09 - 2026-09-30
 
 ### Added
 - `kleidicv_yuv_to_rgb_u8` now supports YUV 4:2:0 semi-planar (YUV420SP) input.
