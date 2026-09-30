@@ -50,17 +50,6 @@ KLEIDICV_API_DECLARATION(kleidicv_gaussian_blur_arbitrary_stripe_u8,
 namespace kleidicv {
 
 template <typename T>
-kleidicv_error_t gaussian_blur_checks(const T *src, size_t src_stride, T *dst,
-                                      size_t dst_stride, size_t width,
-                                      size_t height) KLEIDICV_STREAMING {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
-  return KLEIDICV_OK;
-}
-
-template <typename T>
 FixedBorderTypeValidationResult gaussian_blur_validate(
     const T *src, size_t src_stride, T *dst, size_t dst_stride, size_t width,
     size_t height, size_t channels, size_t kernel_width, size_t kernel_height,
@@ -109,9 +98,20 @@ FixedBorderTypeValidationResult gaussian_blur_validate(
     }
   }
 
-  const kleidicv_error_t check_error =
-      gaussian_blur_checks(src, src_stride, dst, dst_stride, width, height);
-  if (check_error != KLEIDICV_OK) {
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) {
     return {check_error, FixedBorderType{}};
   }
 
