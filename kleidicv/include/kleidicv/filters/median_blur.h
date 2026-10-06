@@ -186,17 +186,6 @@ kleidicv_error_t median_blur_sorting_network_stripe(
 }  // namespace sme
 
 template <typename T>
-inline kleidicv_error_t median_blur_checks(const T *src, size_t src_stride,
-                                           T *dst, size_t dst_stride,
-                                           size_t width, size_t height) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-
-  return KLEIDICV_OK;
-}
-
-template <typename T>
 inline bool is_kernel_size_supported(size_t kernel_width,
                                      size_t kernel_height) {
   if constexpr (std::is_same_v<T, uint8_t>) {
@@ -213,9 +202,20 @@ inline FixedBorderTypeValidationResult median_blur_validate(
     const T *src, size_t src_stride, T *dst, size_t dst_stride, size_t width,
     size_t height, size_t channels, size_t kernel_width, size_t kernel_height,
     kleidicv_border_type_t border_type) {
-  auto check_error =
-      median_blur_checks(src, src_stride, dst, dst_stride, width, height);
-  if (check_error != KLEIDICV_OK) {
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) {
     return {check_error, FixedBorderType{}};
   }
 

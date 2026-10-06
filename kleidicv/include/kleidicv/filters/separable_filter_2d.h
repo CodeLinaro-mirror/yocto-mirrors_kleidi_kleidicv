@@ -53,20 +53,6 @@ KLEIDICV_API_DECLARATION(kleidicv_separable_filter_2d_stripe_u16_sme,
 namespace kleidicv {
 
 template <typename T>
-kleidicv_error_t separable_filter_2d_checks(const T *src, size_t src_stride,
-                                            T *dst, size_t dst_stride,
-                                            size_t width, size_t height,
-                                            const T *kernel_x,
-                                            const T *kernel_y) {
-  CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
-  CHECK_POINTERS(kernel_x, kernel_y);
-
-  return KLEIDICV_OK;
-}
-
-template <typename T>
 FixedBorderTypeValidationResult separable_filter_2d_validate(
     const T *src, size_t src_stride, T *dst, size_t dst_stride, size_t width,
     size_t height, size_t channels, const T *kernel_x, size_t kernel_width,
@@ -85,9 +71,25 @@ FixedBorderTypeValidationResult separable_filter_2d_validate(
     return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
   }
 
-  const kleidicv_error_t check_error = separable_filter_2d_checks(
-      src, src_stride, dst, dst_stride, width, height, kernel_x, kernel_y);
-  if (check_error != KLEIDICV_OK) {
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointers(kernel_x, kernel_y)) {
     return {check_error, FixedBorderType{}};
   }
 
