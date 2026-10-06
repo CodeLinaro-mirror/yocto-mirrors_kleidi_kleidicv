@@ -97,9 +97,8 @@ inline AddPaddingByCopyChecksResult add_padding_by_copy_checks(
     return ptr_stride_error;
   }
 
-  if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT &&
-      KLEIDICV_TARGET_NAMESPACE::any_null(border_value)) {
-    return KLEIDICV_ERROR_NULL_POINTER;
+  if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT) {
+    CHECK_POINTERS(border_value);
   }
 
   constexpr size_t kMaxImageDimension = KLEIDICV_MAX_IMAGE_PIXELS;

@@ -340,15 +340,19 @@ class LoopUnroll2 final {
 
 // Check whether any of the arguments are null pointers.
 template <typename... Pointers>
-bool any_null(Pointers... pointers) KLEIDICV_STREAMING {
-  return (... || (pointers == nullptr));
+kleidicv_error_t check_pointers(Pointers... pointers) KLEIDICV_STREAMING {
+  if ((... || (pointers == nullptr))) {
+    return KLEIDICV_ERROR_NULL_POINTER;
+  }
+  return KLEIDICV_OK;
 }
 
-#define CHECK_POINTERS(...)                                 \
-  do {                                                      \
-    if (KLEIDICV_TARGET_NAMESPACE::any_null(__VA_ARGS__)) { \
-      return KLEIDICV_ERROR_NULL_POINTER;                   \
-    }                                                       \
+#define CHECK_POINTERS(...)                                           \
+  do {                                                                \
+    if (kleidicv_error_t ptr_err =                                    \
+            KLEIDICV_TARGET_NAMESPACE::check_pointers(__VA_ARGS__)) { \
+      return ptr_err;                                                 \
+    }                                                                 \
   } while (false)
 
 template <typename AlignType, typename Value>
