@@ -4,11 +4,15 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/kernel.h"
+#include "kleidicv/filters/sobel.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 
@@ -304,3 +308,47 @@ TYPED_TEST(Sobel, ChannelNumber) {
                 src, sizeof(src), dst, sizeof(dst), validSize, validSize,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1));
 }
+
+namespace {
+
+TEST(FilterStripeWorkers, SobelHonorsRowRange) {
+  constexpr size_t kWidth = 7;
+  constexpr size_t kHeight = 6;
+  constexpr size_t kChannels = 1;
+  constexpr size_t kBegin = 2;
+  constexpr size_t kEnd = 4;
+  constexpr size_t kDstStride = kWidth * sizeof(int16_t);
+  constexpr int16_t kUntouched = -12345;
+  std::array<uint8_t, kWidth * kHeight> src = {};
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint8_t>((index * index + 17 * index + 3) % 251);
+  }
+
+  auto test_direction = [&](auto public_api, auto stripe_api) {
+    std::array<int16_t, kWidth * kHeight> expected = {};
+    std::array<int16_t, kWidth * kHeight> actual = {};
+    actual.fill(kUntouched);
+    auto expected_partial = actual;
+
+    ASSERT_EQ(KLEIDICV_OK,
+              kleidicv::sobel_validate(src.data(), kWidth, actual.data(),
+                                       kDstStride, kWidth, kHeight, kChannels));
+    ASSERT_EQ(KLEIDICV_OK, public_api(src.data(), kWidth, expected.data(),
+                                      kDstStride, kWidth, kHeight, kChannels));
+    ASSERT_EQ(KLEIDICV_OK,
+              stripe_api(src.data(), kWidth, actual.data(), kDstStride, kWidth,
+                         kHeight, kBegin, kEnd, kChannels));
+
+    std::copy(expected.begin() + kWidth * kBegin,
+              expected.begin() + kWidth * kEnd,
+              expected_partial.begin() + kWidth * kBegin);
+    EXPECT_EQ(expected_partial, actual);
+  };
+
+  test_direction(kleidicv_sobel_3x3_horizontal_s16_u8,
+                 kleidicv_sobel_3x3_horizontal_stripe_s16_u8);
+  test_direction(kleidicv_sobel_3x3_vertical_s16_u8,
+                 kleidicv_sobel_3x3_vertical_stripe_s16_u8);
+}
+
+}  // namespace

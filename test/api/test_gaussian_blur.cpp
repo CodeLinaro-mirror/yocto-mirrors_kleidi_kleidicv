@@ -4,6 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 
@@ -12,6 +15,7 @@
 #include "framework/kernel.h"
 #include "framework/utils.h"
 #include "kleidicv/ctypes.h"
+#include "kleidicv/filters/gaussian_blur.h"
 #include "kleidicv/filters/sigma.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
@@ -1131,3 +1135,89 @@ TYPED_TEST(GaussianBlur, KernelGenerationFromSigma) {
   test_sigma<4>();
   test_sigma<8>();
 }
+
+namespace {
+
+TEST(FilterStripeWorkers, GaussianBlurFixedHonorsRowRange) {
+  constexpr size_t kWidth = 7;
+  constexpr size_t kHeight = 6;
+  constexpr size_t kChannels = 1;
+  constexpr size_t kKernelSize = 3;
+  constexpr size_t kBegin = 2;
+  constexpr size_t kEnd = 4;
+  constexpr uint8_t kUntouched = 0xA5;
+  std::array<uint8_t, kWidth * kHeight> src = {};
+  std::array<uint8_t, kWidth * kHeight> expected = {};
+  std::array<uint8_t, kWidth * kHeight> actual = {};
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint8_t>((index * index + 17 * index + 3) % 251);
+  }
+  actual.fill(kUntouched);
+  auto expected_partial = actual;
+
+  const auto validation = kleidicv::gaussian_blur_validate(
+      src.data(), kWidth, actual.data(), kWidth, kWidth, kHeight, kChannels,
+      kKernelSize, kKernelSize, 0.0F, 0.0F, KLEIDICV_BORDER_TYPE_REPLICATE);
+  ASSERT_EQ(KLEIDICV_OK, validation.error);
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_gaussian_blur_u8(src.data(), kWidth, expected.data(),
+                                      kWidth, kWidth, kHeight, kChannels,
+                                      kKernelSize, kKernelSize, 0.0F, 0.0F,
+                                      KLEIDICV_BORDER_TYPE_REPLICATE));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_gaussian_blur_fixed_stripe_u8(
+                src.data(), kWidth, actual.data(), kWidth, kWidth, kHeight,
+                kBegin, kEnd, kChannels, kKernelSize, kKernelSize, 0.0F, 0.0F,
+                validation.fixed_border_type));
+
+  std::copy(expected.begin() + kWidth * kBegin,
+            expected.begin() + kWidth * kEnd,
+            expected_partial.begin() + kWidth * kBegin);
+  EXPECT_EQ(expected_partial, actual);
+}
+
+TEST(GaussianBlurArbitraryStripe, HonorsRowRange) {
+  constexpr size_t kKernelSize = 11;
+  constexpr size_t kWidth = 13;
+  constexpr size_t kHeight = 16;
+  constexpr size_t kChannels = 1;
+  constexpr uint8_t kSentinel = 0xFF;
+  test::Array2D<uint8_t> src{kWidth, kHeight};
+  test::Array2D<uint8_t> dst{kWidth, kHeight};
+  test::Array2D<uint8_t> expected{kWidth, kHeight};
+  test::Array2D<uint8_t> expected_partial{kWidth, kHeight};
+  src.fill([=](size_t row, size_t column) {
+    size_t index = row * kWidth + column;
+    return static_cast<uint8_t>((index * index + 17 * index + 3) % 251);
+  });
+
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_gaussian_blur_u8(src.data(), src.stride(), expected.data(),
+                                      expected.stride(), kWidth, kHeight,
+                                      kChannels, kKernelSize, kKernelSize, 0.0F,
+                                      0.0F, KLEIDICV_BORDER_TYPE_REPLICATE));
+
+  auto test_stripe = [&](size_t y_begin, size_t y_end) {
+    SCOPED_TRACE(testing::Message()
+                 << "stripe [" << y_begin << ", " << y_end << ")");
+    dst.fill(kSentinel);
+    expected_partial.fill(kSentinel);
+    for (size_t row = y_begin; row < y_end; ++row) {
+      for (size_t column = 0; column < kWidth; ++column) {
+        *expected_partial.at(row, column) = *expected.at(row, column);
+      }
+    }
+
+    ASSERT_EQ(KLEIDICV_OK,
+              kleidicv_gaussian_blur_arbitrary_stripe_u8(
+                  src.data(), src.stride(), dst.data(), dst.stride(), kWidth,
+                  kHeight, y_begin, y_end, kChannels, kKernelSize, kKernelSize,
+                  0.0F, 0.0F, kleidicv::FixedBorderType::REPLICATE));
+    EXPECT_EQ_ARRAY2D(expected_partial, dst);
+  };
+
+  test_stripe(0, 1);
+  test_stripe(kHeight - 1, kHeight);
+}
+
+}  // namespace

@@ -4,6 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "framework/array.h"
@@ -12,6 +15,7 @@
 #include "framework/types.h"
 #include "framework/utils.h"
 #include "kleidicv/ctypes.h"
+#include "kleidicv/filters/scharr.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 
@@ -221,3 +225,43 @@ TEST(ScharrInterleaved, Allocation) {
   EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION, ret);
 }
 #endif
+
+namespace {
+
+TEST(FilterStripeWorkers, ScharrHonorsRowRange) {
+  constexpr size_t kSrcWidth = 7;
+  constexpr size_t kSrcHeight = 6;
+  constexpr size_t kSrcChannels = 1;
+  constexpr size_t kDstWidth = (kSrcWidth - 2) * kSrcChannels * 2;
+  constexpr size_t kDstHeight = kSrcHeight - 2;
+  constexpr size_t kDstStride = kDstWidth * sizeof(int16_t);
+  constexpr size_t kBegin = 1;
+  constexpr size_t kEnd = 3;
+  constexpr int16_t kUntouched = -12345;
+  std::array<uint8_t, kSrcWidth * kSrcHeight> src = {};
+  std::array<int16_t, kDstWidth * kDstHeight> expected = {};
+  std::array<int16_t, kDstWidth * kDstHeight> actual = {};
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint8_t>((index * index + 17 * index + 3) % 251);
+  }
+  actual.fill(kUntouched);
+  auto expected_partial = actual;
+
+  ASSERT_EQ(KLEIDICV_OK, kleidicv::scharr_interleaved_validate(
+                             src.data(), kSrcWidth, kSrcWidth, kSrcHeight,
+                             kSrcChannels, actual.data(), kDstStride));
+  ASSERT_EQ(KLEIDICV_OK, kleidicv_scharr_interleaved_s16_u8(
+                             src.data(), kSrcWidth, kSrcWidth, kSrcHeight,
+                             kSrcChannels, expected.data(), kDstStride));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_scharr_interleaved_stripe_s16_u8(
+                src.data(), kSrcWidth, kSrcWidth, kSrcHeight, kSrcChannels,
+                actual.data(), kDstStride, kBegin, kEnd));
+
+  std::copy(expected.begin() + kDstWidth * kBegin,
+            expected.begin() + kDstWidth * kEnd,
+            expected_partial.begin() + kDstWidth * kBegin);
+  EXPECT_EQ(expected_partial, actual);
+}
+
+}  // namespace

@@ -4,10 +4,16 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/kernel.h"
 #include "framework/utils.h"
+#include "kleidicv/filters/separable_filter_2d.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 
@@ -595,3 +601,88 @@ TYPED_TEST(SeparableFilter2D, CannotAllocate) {
   EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION, ret);
 }
 #endif
+
+namespace {
+
+TEST(FilterStripeWorkers, SeparableFilterU8HonorsRowRange) {
+  constexpr size_t kWidth = 7;
+  constexpr size_t kHeight = 6;
+  constexpr size_t kChannels = 1;
+  constexpr size_t kKernelSize = 5;
+  constexpr size_t kBegin = 2;
+  constexpr size_t kEnd = 4;
+  constexpr uint8_t kUntouched = 0xA5;
+  const std::array<uint8_t, kKernelSize> kernel = {0, 0, 1, 0, 0};
+  std::array<uint8_t, kWidth * kHeight> src = {};
+  std::array<uint8_t, kWidth * kHeight> expected = {};
+  std::array<uint8_t, kWidth * kHeight> actual = {};
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint8_t>((index * index + 17 * index + 3) % 251);
+  }
+  actual.fill(kUntouched);
+  auto expected_partial = actual;
+
+  const auto validation = kleidicv::separable_filter_2d_validate(
+      src.data(), kWidth, actual.data(), kWidth, kWidth, kHeight, kChannels,
+      kernel.data(), kKernelSize, kernel.data(), kKernelSize,
+      KLEIDICV_BORDER_TYPE_REPLICATE);
+  ASSERT_EQ(KLEIDICV_OK, validation.error);
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_separable_filter_2d_u8(
+                src.data(), kWidth, expected.data(), kWidth, kWidth, kHeight,
+                kChannels, kernel.data(), kKernelSize, kernel.data(),
+                kKernelSize, KLEIDICV_BORDER_TYPE_REPLICATE));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_separable_filter_2d_stripe_u8(
+                src.data(), kWidth, actual.data(), kWidth, kWidth, kHeight,
+                kBegin, kEnd, kChannels, kernel.data(), kKernelSize,
+                kernel.data(), kKernelSize, validation.fixed_border_type));
+
+  std::copy(expected.begin() + kWidth * kBegin,
+            expected.begin() + kWidth * kEnd,
+            expected_partial.begin() + kWidth * kBegin);
+  EXPECT_EQ(expected_partial, actual);
+}
+
+TEST(FilterStripeWorkers, SeparableFilterU16HonorsRowRange) {
+  constexpr size_t kWidth = 7;
+  constexpr size_t kHeight = 6;
+  constexpr size_t kChannels = 1;
+  constexpr size_t kKernelSize = 5;
+  constexpr size_t kBegin = 2;
+  constexpr size_t kEnd = 4;
+  constexpr uint16_t kUntouched = 0xA5A5;
+  constexpr size_t kStride = kWidth * sizeof(uint16_t);
+  const std::array<uint16_t, kKernelSize> kernel = {0, 0, 1, 0, 0};
+  std::array<uint16_t, kWidth * kHeight> src = {};
+  std::array<uint16_t, kWidth * kHeight> expected = {};
+  std::array<uint16_t, kWidth * kHeight> actual = {};
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint16_t>((index * index + 17 * index + 3) % 251);
+  }
+  actual.fill(kUntouched);
+  auto expected_partial = actual;
+
+  const auto validation = kleidicv::separable_filter_2d_validate(
+      src.data(), kStride, actual.data(), kStride, kWidth, kHeight, kChannels,
+      kernel.data(), kKernelSize, kernel.data(), kKernelSize,
+      KLEIDICV_BORDER_TYPE_REPLICATE);
+  ASSERT_EQ(KLEIDICV_OK, validation.error);
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_separable_filter_2d_u16(
+                src.data(), kStride, expected.data(), kStride, kWidth, kHeight,
+                kChannels, kernel.data(), kKernelSize, kernel.data(),
+                kKernelSize, KLEIDICV_BORDER_TYPE_REPLICATE));
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_separable_filter_2d_stripe_u16(
+                src.data(), kStride, actual.data(), kStride, kWidth, kHeight,
+                kBegin, kEnd, kChannels, kernel.data(), kKernelSize,
+                kernel.data(), kKernelSize, validation.fixed_border_type));
+
+  std::copy(expected.begin() + kWidth * kBegin,
+            expected.begin() + kWidth * kEnd,
+            expected_partial.begin() + kWidth * kBegin);
+  EXPECT_EQ(expected_partial, actual);
+}
+
+}  // namespace

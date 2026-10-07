@@ -4,6 +4,10 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <type_traits>
 
 #include "framework/array.h"
@@ -11,6 +15,7 @@
 #include "framework/kernel.h"
 #include "framework/utils.h"
 #include "kleidicv/ctypes.h"
+#include "kleidicv/filters/blur_and_downsample.h"
 #include "kleidicv/kleidicv.h"
 #include "test_config.h"
 
@@ -320,3 +325,46 @@ TYPED_TEST(BlurAndDownsample, Allocation) {
   EXPECT_EQ(KLEIDICV_ERROR_ALLOCATION, ret);
 }
 #endif
+
+namespace {
+
+TEST(FilterStripeWorkers, BlurAndDownsampleHonorsSourceRowRange) {
+  constexpr size_t kSrcWidth = 7;
+  constexpr size_t kSrcHeight = 7;
+  constexpr size_t kDstWidth = (kSrcWidth + 1) / 2;
+  constexpr size_t kDstHeight = (kSrcHeight + 1) / 2;
+  constexpr size_t kChannels = 1;
+  constexpr size_t kBegin = 1;
+  constexpr size_t kEnd = 6;
+  constexpr size_t kDstBegin = 1;
+  constexpr size_t kDstEnd = 3;
+  constexpr uint8_t kUntouched = 0xA5;
+  std::array<uint8_t, kSrcWidth * kSrcHeight> src = {};
+  std::array<uint8_t, kDstWidth * kDstHeight> expected = {};
+  std::array<uint8_t, kDstWidth * kDstHeight> actual = {};
+  for (size_t index = 0; index < src.size(); ++index) {
+    src[index] = static_cast<uint8_t>((index * index + 17 * index + 3) % 251);
+  }
+  actual.fill(kUntouched);
+  auto expected_partial = actual;
+
+  const auto validation = kleidicv::blur_and_downsample_validate(
+      src.data(), kSrcWidth, kSrcWidth, kSrcHeight, actual.data(), kDstWidth,
+      kChannels, KLEIDICV_BORDER_TYPE_REPLICATE);
+  ASSERT_EQ(KLEIDICV_OK, validation.error);
+  ASSERT_EQ(KLEIDICV_OK,
+            kleidicv_blur_and_downsample_u8(
+                src.data(), kSrcWidth, kSrcWidth, kSrcHeight, expected.data(),
+                kDstWidth, kChannels, KLEIDICV_BORDER_TYPE_REPLICATE));
+  ASSERT_EQ(KLEIDICV_OK, kleidicv_blur_and_downsample_stripe_u8(
+                             src.data(), kSrcWidth, kSrcWidth, kSrcHeight,
+                             actual.data(), kDstWidth, kBegin, kEnd, kChannels,
+                             validation.fixed_border_type));
+
+  std::copy(expected.begin() + kDstWidth * kDstBegin,
+            expected.begin() + kDstWidth * kDstEnd,
+            expected_partial.begin() + kDstWidth * kDstBegin);
+  EXPECT_EQ(expected_partial, actual);
+}
+
+}  // namespace
