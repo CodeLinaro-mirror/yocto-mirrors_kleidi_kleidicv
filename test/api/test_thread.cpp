@@ -698,6 +698,40 @@ TEST_F(ThreadBinaryValidation, EmptyImagePreservesSchedulerBehavior) {
 
 }  // namespace
 
+namespace {
+
+using ThreadFilterValidation = test::ThreadValidation;
+
+constexpr size_t kLargeWidth = static_cast<size_t>(KLEIDICV_MAX_IMAGE_PIXELS);
+
+TEST_F(ThreadFilterValidation, GaussianBlur) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_gaussian_blur_u8(
+                      nullptr, 1, &dst, 1, 1, 1, 1, 3, 3, 0.0F, 0.0F,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_gaussian_blur_u8(
+                      nullptr, 1, &dst, 1, 3, 3, 1, 3, 3, 0.0F, 0.0F,
+                      KLEIDICV_BORDER_TYPE_TRANSPARENT, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_gaussian_blur_u8(
+                      nullptr, 1, &dst, 1, 3, 3, 1, 3, 3, 0.0F, 0.0F,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_gaussian_blur_u8(
+                      nullptr, 1, &dst, 1, kLargeWidth, 3, 1, 3, 3, 0.0F, 0.0F,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_gaussian_blur_u8(
+                      &src, 1, &dst, 1, kLargeWidth, 3, 1, 3, 3, 0.0F, 0.0F,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+}
+
+}  // namespace
+
 TEST_P(Thread, gaussian_blur_fixed_u8) {
   unsigned width = 0, height = 0, thread_count = 0;
   std::tie(width, height, thread_count) = GetParam();
@@ -823,6 +857,36 @@ TEST(ThreadGaussianBlur, NotImplemented) {
                 KLEIDICV_BORDER_TYPE_TRANSPARENT, get_multithreading_fake(2)));
 }
 
+namespace {
+
+TEST_F(ThreadFilterValidation, BlurAndDownsample) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_blur_and_downsample_u8(
+                      nullptr, 1, 3, 4, &dst, 1, 1,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_blur_and_downsample_u8(
+                      nullptr, 1, 4, 4, &dst, 1, 1,
+                      KLEIDICV_BORDER_TYPE_TRANSPARENT, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_blur_and_downsample_u8(
+                      &src, 1, 4, 4, nullptr, 1, 1,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_blur_and_downsample_u8(
+                      nullptr, 1, kLargeWidth, 4, &dst, 1, 1,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_blur_and_downsample_u8(
+                      &src, 1, kLargeWidth, 4, &dst, 1, 1,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+}
+
+}  // namespace
+
 TEST_P(Thread, blur_and_downsample_u8) {
   unsigned src_width = 0, src_height = 0, thread_count = 0;
   std::tie(src_width, src_height, thread_count) = GetParam();
@@ -871,6 +935,37 @@ TEST(ThreadBlurAndDownsample, NotImplemented) {
                 KLEIDICV_BORDER_TYPE_TRANSPARENT, get_multithreading_fake(2)));
 }
 
+namespace {
+
+TEST_F(ThreadFilterValidation, Scharr) {
+  uint8_t src = 0;
+  int16_t dst = 0;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_scharr_interleaved_s16_u8(
+                      nullptr, 1, 2, 3, 1, &dst, sizeof(dst), scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_scharr_interleaved_s16_u8(
+                      nullptr, 1, 3, 3, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1,
+                      &dst, sizeof(dst), scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_scharr_interleaved_s16_u8(
+          nullptr, 1, kLargeWidth, 3, 1, &dst, sizeof(dst), scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_scharr_interleaved_s16_u8(
+                      &src, 1, 3, 3, 1, nullptr, sizeof(dst), scheduler()));
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_scharr_interleaved_s16_u8(
+                      &src, 1, 3, 3, 1, &dst, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_scharr_interleaved_s16_u8(
+          &src, 1, kLargeWidth, 3, 1, &dst, sizeof(dst), scheduler()));
+}
+
+}  // namespace
+
 TEST_P(Thread, scharr_interleaved_s16_u8) {
   unsigned src_width = 0, src_height = 0, thread_count = 0;
   std::tie(src_width, src_height, thread_count) = GetParam();
@@ -914,6 +1009,58 @@ TEST(ThreadScharrInterleaved, NotImplemented) {
                 src, 1, 3, 3, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, dst,
                 sizeof(dst), get_multithreading_fake(2)));
 }
+
+namespace {
+
+TEST_F(ThreadFilterValidation, SeparableFilterU8) {
+  uint8_t src = 0;
+  uint8_t dst = 0;
+  uint8_t kernel[5] = {};
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_separable_filter_2d_u8(
+                      nullptr, 1, &dst, 1, 5, 5, 1, kernel, 3, kernel, 5,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_separable_filter_2d_u8(
+                      nullptr, 1, &dst, 1, 5, 5, 1, kernel, 5, kernel, 5,
+                      KLEIDICV_BORDER_TYPE_TRANSPARENT, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_separable_filter_2d_u8(
+          &src, 1, &dst, 1, 5, 5, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, nullptr,
+          5, kernel, 5, KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
+                  kleidicv_thread_separable_filter_2d_u8(
+                      nullptr, 1, &dst, 1, kLargeWidth, 5, 1, kernel, 5, kernel,
+                      5, KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_separable_filter_2d_u8(
+                      &src, 1, &dst, 1, kLargeWidth, 5, 1, nullptr, 5, kernel,
+                      5, KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_separable_filter_2d_u8(
+                      &src, 1, &dst, 1, kLargeWidth, 5, 1, kernel, 5, kernel, 5,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+}
+
+TEST_F(ThreadFilterValidation, SeparableFilterU16) {
+  uint16_t src = 0;
+  uint16_t dst = 0;
+  uint16_t kernel[5] = {};
+
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_separable_filter_2d_u16(
+                      &src, sizeof(src), &dst, 1, 5, 5, 1, kernel, 5, kernel, 5,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_separable_filter_2d_u16(
+          &src, sizeof(src), &dst, sizeof(dst), kLargeWidth, 5, 1, kernel, 5,
+          kernel, 5, KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+}
+
+}  // namespace
 
 TEST_P(Thread, separable_filter_2d_u8) {
   check_separable_filter_2d<uint8_t>(kleidicv_separable_filter_2d_u8,
@@ -1517,6 +1664,44 @@ TEST(ThreadWarpPerspective, NotImplemented) {
       kleidicv_thread_warp_perspective_u8, 1, KLEIDICV_INTERPOLATION_LINEAR,
       KLEIDICV_BORDER_TYPE_REFLECT);
 }
+
+namespace {
+
+TEST_F(ThreadFilterValidation, SobelHorizontal) {
+  uint8_t src = 0;
+  int16_t dst = 0;
+
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_sobel_3x3_horizontal_s16_u8(
+                      nullptr, 1, &dst, sizeof(dst), 1, 3, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_NULL_POINTER,
+      kleidicv_thread_sobel_3x3_horizontal_s16_u8(
+          nullptr, 1, &dst, sizeof(dst), kLargeWidth, 3, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+                  kleidicv_thread_sobel_3x3_horizontal_s16_u8(
+                      &src, 1, &dst, sizeof(dst), 3, 3,
+                      KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_sobel_3x3_horizontal_s16_u8(
+                      &src, 1, &dst, sizeof(dst), kLargeWidth, 3,
+                      KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, scheduler()));
+}
+
+TEST_F(ThreadFilterValidation, SobelVertical) {
+  uint8_t src = 0;
+  int16_t dst = 0;
+
+  expect_rejected(KLEIDICV_ERROR_ALIGNMENT,
+                  kleidicv_thread_sobel_3x3_vertical_s16_u8(&src, 1, &dst, 1, 3,
+                                                            3, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_sobel_3x3_vertical_s16_u8(
+          &src, 1, &dst, sizeof(dst), kLargeWidth, 3, 1, scheduler()));
+}
+
+}  // namespace
 
 TEST_P(Thread, SobelHorizontal1Channel) {
   check_unary_op<uint8_t, int16_t>(kleidicv_sobel_3x3_horizontal_s16_u8,
