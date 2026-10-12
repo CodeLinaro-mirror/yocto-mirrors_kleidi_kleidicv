@@ -19,6 +19,30 @@ cv::Mat exec_resize(cv::Mat& input_mat) {
   return result;
 }
 
+template <int Factor, int Type>
+cv::Mat exec_resize_with_scale(cv::Mat& input_mat) {
+  cv::Mat result;
+  resize(input_mat, result, cv::Size(), Factor / 1000.0, Factor / 1000.0, Type);
+  return result;
+}
+
+cv::Mat exec_resize_scale_tolerance_boundary(cv::Mat&) {
+  constexpr int kHeight = 1048575;
+  constexpr int kWidth = 17;
+  cv::Mat input_mat(kHeight, kWidth, CV_8UC1, cv::Scalar(0));
+  input_mat.row(kHeight / 2).setTo(255);
+
+  cv::Mat result;
+  // The old HAL check rejected only when inv_scale_y != 0 and
+  // std::abs(inv_scale_y * src_height - dst_height) > FLT_EPSILON.
+  // Here the difference is about 1e-7, so it accepted fy. KleidiCV then
+  // used 1/kHeight and sampled the white row exactly, while vanilla OpenCV
+  // used fy and blended it with a black row.
+  resize(input_mat, result, cv::Size(), 1.0, (1.0 + 1e-7) / kHeight,
+         CV_HAL_INTER_LINEAR);
+  return result;
+}
+
 template <int Type>
 cv::Mat exec_resize_random_scale(cv::Mat& input_mat) {
   double scale_x, scale_y;
@@ -65,19 +89,19 @@ template <>
 uint8_t get_threshold(int Factor, size_t channels) {
   if (Factor == 500 ||
       ((Factor == 2000 || Factor == 4000) && (channels == 1))) {
+    // These tested scale factors differ by at most one intensity level.
     return 1;
   }
 
   if (channels == 2 || channels == 3) {
-    // Q32 coordinate advancement removes the extra level previously caused by
-    // accumulated Q16 step rounding.
+    // Carotene does not handle these channel counts; the tested OpenCV core
+    // and KleidiCV results differ by at most one intensity level.
     return 1;
   }
 
-  // Empirical tolerance for the finite registered OpenCV 4.14 corpus. The
-  // 1- and 4-channel Carotene path uses Q7 interpolation. This is not a bound
-  // for every API-supported width because Carotene computes coordinates in
-  // float32.
+  // Empirical tolerance for the registered OpenCV tests. Carotene's Q7
+  // interpolation for 1- and 4-channel images can differ from KleidiCV by four
+  // levels.
   return 4;
 }
 
@@ -107,6 +131,36 @@ bool test_resize_checkerboard_compatibility(
                                                        reply_queue, input_mat);
   return are_matrices_different<uint8_t>(get_threshold<uint8_t>(0, channels),
                                          actual_mat, expected_mat);
+}
+
+bool test_resize_odd_source_rounded_scale_fallback(
+    int index, RecreatedMessageQueue& request_queue,
+    RecreatedMessageQueue& reply_queue) {
+  cv::Mat input_mat(91, 71, CV_8UC1);
+  cv::RNG rng(0);
+  rng.fill(input_mat, cv::RNG::UNIFORM, 0, 255);
+
+  // Half-scale rounding produces a 36x46 image from an odd-sized source, so
+  // neither destination-to-source dimension ratio is 0.5.
+  cv::Mat actual_mat =
+      exec_resize_with_scale<500, CV_HAL_INTER_LINEAR>(input_mat);
+  cv::Mat expected_mat = get_expected_from_subordinate(index, request_queue,
+                                                       reply_queue, input_mat);
+  return actual_mat.size() != cv::Size(36, 46) ||
+         are_matrices_different<uint8_t>(0, actual_mat, expected_mat);
+}
+
+bool test_resize_scale_tolerance_boundary(int index,
+                                          RecreatedMessageQueue& request_queue,
+                                          RecreatedMessageQueue& reply_queue) {
+  // The image is larger than the shared-memory buffer. Both processes build it
+  // locally; only this control matrix and the 17-byte result cross the queue.
+  cv::Mat control(1, 1, CV_8UC1, cv::Scalar(0));
+  cv::Mat actual_mat = exec_resize_scale_tolerance_boundary(control);
+  cv::Mat expected_mat =
+      get_expected_from_subordinate(index, request_queue, reply_queue, control);
+  return actual_mat.size() != cv::Size(17, 1) ||
+         are_matrices_different<uint8_t>(0, actual_mat, expected_mat);
 }
 
 template <int Factor, int Type, int MinSize, int MaxSize, size_t Format>
@@ -231,6 +285,8 @@ std::vector<test>& resize_tests_get() {
 
     TEST("Resize0.5x0.5 uint8, INTER_AREA, 1 channel", (test_resize<500, CV_HAL_INTER_AREA, 5, 32, CV_8UC1>), (exec_resize<500, CV_HAL_INTER_AREA>)),
     TEST("Resize0.5x0.5 uint8, INTER_LINEAR, 1 channel", (test_resize<500, CV_HAL_INTER_LINEAR, 5, 32, CV_8UC1>), (exec_resize<500, CV_HAL_INTER_LINEAR>)),
+    TEST("Resize0.5x0.5 uint8, INTER_LINEAR, odd source and rounded scale", (test_resize_odd_source_rounded_scale_fallback), (exec_resize_with_scale<500, CV_HAL_INTER_LINEAR>)),
+    TEST("Resize uint8, INTER_LINEAR, scale tolerance boundary", (test_resize_scale_tolerance_boundary), (exec_resize_scale_tolerance_boundary)),
     TEST("Resize0.777x0.777 uint8, INTER_LINEAR, 1 channel", (test_resize<777, CV_HAL_INTER_LINEAR, 21, 64, CV_8UC1>), (exec_resize<777, CV_HAL_INTER_LINEAR>)),
     TEST("Resize0.444x0.444 uint8, INTER_LINEAR, 1 channel", (test_resize<444, CV_HAL_INTER_LINEAR, 21, 64, CV_8UC1>), (exec_resize<444, CV_HAL_INTER_LINEAR>)),
     TEST("Resize0.3x0.3 uint8, INTER_LINEAR, 1 channel", (test_resize_to_third<CV_HAL_INTER_LINEAR, CV_8UC1>), (exec_resize_to_third<CV_HAL_INTER_LINEAR>)),

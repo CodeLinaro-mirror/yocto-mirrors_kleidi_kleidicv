@@ -372,8 +372,10 @@ Warning: The operation is not bit exact with OpenCV due to rounding differences.
 Notes on parameters:
 
 * `src.type()` - only supports certain values in combination with other parameters as shown in the table below.
-* `dst.cols`,`dst.rows` - must be a multiple of `src.cols` and `src.rows` respectively, in combination with other parameters as shown in the table below.
-* `fx`,`fy` - must be 0 or `dst.cols / src.cols`.
+* `dsize.width`,`dsize.height` - must give scaling factors supported for the selected `src.type()` and `interpolation`, as shown in the table below.
+* `fx`,`fy` - must be 0 (simpler solution) or be derived in the following way:
+  * `fx = double(dsize.width) / src.cols`
+  * `fy = double(dsize.height) / src.rows`
 * `interpolation` - supported [`InterpolationFlags`](https://docs.opencv.org/4.10.0/da/d54/group__imgproc__transform.html#ga5bb5a1fea74ea38e1a5445ca803ff121) are as shown in the table below.
 
 |`src.type()`|`interpolation`|src:dst dimensions ratio|

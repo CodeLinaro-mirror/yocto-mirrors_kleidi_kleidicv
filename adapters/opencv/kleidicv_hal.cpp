@@ -764,13 +764,24 @@ int resize(int src_type, const uchar *src_data, size_t src_step, int src_width,
     return CV_HAL_ERROR_NOT_IMPLEMENTED;
   }
 
-  size_t channels = (src_type >> CV_CN_SHIFT) + 1;
+  size_t channels = static_cast<size_t>(CV_MAT_CN(src_type));
   if (channels != 1 && CV_MAT_DEPTH(src_type) != CV_8U) {
     return CV_HAL_ERROR_NOT_IMPLEMENTED;
   }
 
-  // For this special scaling factor pair INTER_LINEAR and INTER_AREA provide
-  // the very same results.
+  // This implementation derives scaling factors from the source and destination
+  // dimensions. Fall back if OpenCV passes different factors. When fx/fy are
+  // supplied, OpenCV rounds the scaled dimensions to integers, so the supplied
+  // factors can differ from the ratios of those integer dimensions.
+  // For supported OpenCV versions, the dsize path computes these ratios using
+  // the same double division.
+  if (inv_scale_x != static_cast<double>(dst_width) / src_width ||
+      inv_scale_y != static_cast<double>(dst_height) / src_height) {
+    return CV_HAL_ERROR_NOT_IMPLEMENTED;
+  }
+
+  // With exact 2:1 dimensions, INTER_LINEAR and INTER_AREA give the same
+  // result.
   if (CV_MAT_DEPTH(src_type) == CV_8U && inv_scale_x == 0.5 &&
       inv_scale_y == 0.5 && channels >= 1 && channels <= 4 &&
       (interpolation == CV_HAL_INTER_LINEAR ||
@@ -788,13 +799,6 @@ int resize(int src_type, const uchar *src_data, size_t src_step, int src_width,
   }
 
   if (interpolation != CV_HAL_INTER_LINEAR) {
-    return CV_HAL_ERROR_NOT_IMPLEMENTED;
-  }
-
-  if ((inv_scale_x != 0 &&
-       std::abs(inv_scale_x * src_width - dst_width) > FLT_EPSILON) ||
-      (inv_scale_y != 0 &&
-       std::abs(inv_scale_y * src_height - dst_height) > FLT_EPSILON)) {
     return CV_HAL_ERROR_NOT_IMPLEMENTED;
   }
 

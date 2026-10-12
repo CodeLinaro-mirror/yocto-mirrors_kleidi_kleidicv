@@ -95,6 +95,7 @@ int run_tests(RecreatedMessageQueue& request_queue,
   for (int i = 0; i < static_cast<int>(all_tests.size()); ++i) {
     std::cout << "Testing " + all_tests[i].first << std::endl;
     if (all_tests[i].second(i, request_queue, reply_queue)) {
+      std::cout << "Failed: " << all_tests[i].first << std::endl;
       ret_val = 1;
     }
   }
@@ -103,6 +104,7 @@ int run_tests(RecreatedMessageQueue& request_queue,
   for (auto [name, test_func] : all_manager_only_tests) {
     std::cout << "Testing " + name << std::endl;
     if (test_func()) {
+      std::cout << "Failed: " << name << std::endl;
       ret_val = 1;
     }
   }

@@ -19,6 +19,11 @@ This changelog aims to follow the guiding principles of
 - Custom threading backends must provide non-empty callback ranges satisfying
   `0 <= begin < end <= task_count`.
 
+### Fixed
+- Tightened the existing scale check in the OpenCV HAL's resize implementation so
+  mismatched factors cannot pass its tolerance for very large images. The shared
+  INTER_LINEAR/INTER_AREA shortcut now requires exact 2:1 dimensions.
+
 ## 26.09 - 2026-09-30
 
 ### Added
