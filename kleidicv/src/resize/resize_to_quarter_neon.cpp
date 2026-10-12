@@ -148,24 +148,24 @@ void resize_to_quarter_vector_path<4>(const uint8_t *src_l, size_t src_stride,
     VecTraits<uint8_t>::load(src_l + kVectorLength, top1);
     VecTraits<uint8_t>::load(src_l + src_stride + kVectorLength, bottom1);
 
-    uint16x8_t sum_0 =
-        vaddq_u16(vmovl_u8(vget_low_u8(top0)), vmovl_u8(vget_low_u8(bottom0)));
-    uint16x8_t sum_1 = vaddq_u16(vmovl_u8(vget_high_u8(top0)),
-                                 vmovl_u8(vget_high_u8(bottom0)));
-    uint16x8_t sum_2 =
-        vaddq_u16(vmovl_u8(vget_low_u8(top1)), vmovl_u8(vget_low_u8(bottom1)));
-    uint16x8_t sum_3 = vaddq_u16(vmovl_u8(vget_high_u8(top1)),
-                                 vmovl_u8(vget_high_u8(bottom1)));
+    uint16x8_t sum0_lo = vaddl_u8(vget_low_u8(top0), vget_low_u8(bottom0));
+    uint16x8_t sum0_hi = vaddl_u8(vget_high_u8(top0), vget_high_u8(bottom0));
+    uint16x8_t sum1_lo = vaddl_u8(vget_low_u8(top1), vget_low_u8(bottom1));
+    uint16x8_t sum1_hi = vaddl_u8(vget_high_u8(top1), vget_high_u8(bottom1));
 
-    sum_0 = vaddq_u16(sum_0, vextq_u16(sum_0, sum_0, 4));
-    sum_1 = vaddq_u16(sum_1, vextq_u16(sum_1, sum_1, 4));
-    sum_2 = vaddq_u16(sum_2, vextq_u16(sum_2, sum_2, 4));
-    sum_3 = vaddq_u16(sum_3, vextq_u16(sum_3, sum_3, 4));
+    uint64x2_t sum0_lo_u64 = vreinterpretq_u64_u16(sum0_lo);
+    uint64x2_t sum0_hi_u64 = vreinterpretq_u64_u16(sum0_hi);
+    uint64x2_t sum1_lo_u64 = vreinterpretq_u64_u16(sum1_lo);
+    uint64x2_t sum1_hi_u64 = vreinterpretq_u64_u16(sum1_hi);
 
-    uint16x8_t lo = vreinterpretq_u16_u8(
-        vextq_u8(vreinterpretq_u8_u16(sum_0), vreinterpretq_u8_u16(sum_1), 8));
-    uint16x8_t hi = vreinterpretq_u16_u8(
-        vextq_u8(vreinterpretq_u8_u16(sum_2), vreinterpretq_u8_u16(sum_3), 8));
+    // Each 64-bit lane packs four 16-bit channel sums. Pairwise addition
+    // produces sums of at most 1020, so no carry crosses the 16-bit channel
+    // boundaries.
+    uint64x2_t sum0_u64 = vpaddq_u64(sum0_lo_u64, sum0_hi_u64);
+    uint64x2_t sum1_u64 = vpaddq_u64(sum1_lo_u64, sum1_hi_u64);
+
+    uint16x8_t lo = vreinterpretq_u16_u64(sum0_u64);
+    uint16x8_t hi = vreinterpretq_u16_u64(sum1_u64);
 
     return vrshrn_high_n_u16(vrshrn_n_u16(lo, 2), hi, 2);
   };
