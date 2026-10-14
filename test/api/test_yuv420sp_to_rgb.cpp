@@ -357,11 +357,10 @@ TEST(Yuv420Helpers, EmptyImageUvPlaneRemainsAtSource) {
   }
 }
 
-TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbEmptyImages) {
+TEST(YuvSpToRgb, EmptyImages) {
   constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
   constexpr uint8_t kUntouched = 0xFE;
 
-  // Public APIs return before reaching this internal empty-image guard.
   for (auto shape :
        {std::array<size_t, 2>{0, 0}, std::array<size_t, 2>{0, 1},
         std::array<size_t, 2>{1, 0}, std::array<size_t, 2>{0, kMaxSize},
@@ -374,11 +373,11 @@ TEST(Yuv420StripeWorkers, SplitSemiplanarToRgbEmptyImages) {
     const uint8_t src_uv = 0;
     uint8_t dst = kUntouched;
 
-    EXPECT_EQ(KLEIDICV_OK, kleidicv_yuv420sp_to_rgb_u8(
+    EXPECT_EQ(KLEIDICV_OK, kleidicv_yuv_semiplanar_to_rgb_u8(
                                &src_y, kMaxSize, &src_uv, kMaxSize, &dst,
                                kMaxSize, width, height, KLEIDICV_NV12_TO_RGB));
     EXPECT_EQ(kUntouched, dst);
-    EXPECT_EQ(KLEIDICV_OK, kleidicv_yuv420sp_to_rgb_u8(
+    EXPECT_EQ(KLEIDICV_OK, kleidicv_yuv_semiplanar_to_rgb_u8(
                                nullptr, kMaxSize, nullptr, kMaxSize, nullptr,
                                kMaxSize, width, height, KLEIDICV_NV12_TO_RGB));
   }

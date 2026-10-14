@@ -7,10 +7,10 @@
 
 #include "kleidicv/utils.h"
 
-namespace kleidicv {
+namespace KLEIDICV_TARGET_NAMESPACE {
 
 inline bool is_yuv420p_format_supported(
-    kleidicv_color_conversion_t color_format) {
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   switch (color_format) {
     case KLEIDICV_IYUV_TO_RGB:
     case KLEIDICV_IYUV_TO_BGR:
@@ -27,7 +27,7 @@ inline bool is_yuv420p_format_supported(
 }
 
 inline bool is_yuv420sp_format_supported(
-    kleidicv_color_conversion_t color_format) {
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   switch (color_format) {
     case KLEIDICV_NV12_TO_RGB:
     case KLEIDICV_NV12_TO_BGR:
@@ -42,10 +42,6 @@ inline bool is_yuv420sp_format_supported(
       return false;
   }
 }
-
-}  // namespace kleidicv
-
-namespace KLEIDICV_TARGET_NAMESPACE {
 
 inline constexpr size_t yuv420_chroma_height(size_t height) KLEIDICV_STREAMING {
   return height / 2 + height % 2;

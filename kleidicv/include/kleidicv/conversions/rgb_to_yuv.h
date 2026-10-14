@@ -49,11 +49,11 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv422_u8, const uint8_t *src,
                          kleidicv_color_conversion_t color_format);
 }
 
-namespace kleidicv {
+namespace KLEIDICV_TARGET_NAMESPACE {
 
 inline kleidicv_error_t rgb_to_yuv420p_validate(
     const uint8_t *src, uint8_t *dst, size_t width, size_t height,
-    kleidicv_color_conversion_t color_format) {
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   CHECK_POINTERS(src, dst);
   CHECK_IMAGE_SIZE(width, height);
   if (!is_yuv420p_format_supported(color_format)) {
@@ -64,7 +64,8 @@ inline kleidicv_error_t rgb_to_yuv420p_validate(
 
 inline kleidicv_error_t rgb_to_yuv420sp_validate(
     const uint8_t *src, uint8_t *y_dst, uint8_t *uv_dst, size_t width,
-    size_t height, kleidicv_color_conversion_t color_format) {
+    size_t height,
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   CHECK_POINTERS(src, y_dst, uv_dst);
   CHECK_IMAGE_SIZE(width, height);
   if (!is_yuv420sp_format_supported(color_format)) {
@@ -72,6 +73,10 @@ inline kleidicv_error_t rgb_to_yuv420sp_validate(
   }
   return KLEIDICV_OK;
 }
+
+}  // namespace KLEIDICV_TARGET_NAMESPACE
+
+namespace kleidicv {
 
 namespace neon {
 

@@ -9,21 +9,6 @@
 #include "kleidicv/kleidicv.h"
 
 extern "C" {
-// For internal use only. See instead kleidicv_yuv_semiplanar_to_rgb_u8.
-// Converts semi-planar YUV420 (NV12 or NV21) to RGB, RGBA, BGR, or BGRA
-// format. All channels are 8-bit wide. The planes may be sliced to a
-// contiguous range of rows; validate the complete image before slicing.
-KLEIDICV_API_DECLARATION(kleidicv_yuv420sp_to_rgb_u8, const uint8_t *src_y,
-                         size_t src_y_stride, const uint8_t *src_uv,
-                         size_t src_uv_stride, uint8_t *dst, size_t dst_stride,
-                         size_t width, size_t height,
-                         kleidicv_color_conversion_t color_format);
-KLEIDICV_API_DECLARATION(kleidicv_yuv420sp_to_rgb_u8_sme, const uint8_t *src_y,
-                         size_t src_y_stride, const uint8_t *src_uv,
-                         size_t src_uv_stride, uint8_t *dst, size_t dst_stride,
-                         size_t width, size_t height,
-                         kleidicv_color_conversion_t color_format);
-
 // For internal use only. See instead kleidicv_yuv_to_rgb_u8.
 // Converts a stripe (range of rows) of a planar YUV420 image (I420 or YV12)
 // to RGB, RGBA, BGR, or BGRA format. All channels are 8-bit wide. The stripe
@@ -52,11 +37,12 @@ KLEIDICV_API_DECLARATION(kleidicv_yuv422_to_rgb_u8, const uint8_t *src,
                          kleidicv_color_conversion_t color_format);
 }
 
-namespace kleidicv {
+namespace KLEIDICV_TARGET_NAMESPACE {
 
 inline kleidicv_error_t yuv_semiplanar_to_rgb_validate(
     const uint8_t *src_y, const uint8_t *src_uv, uint8_t *dst, size_t width,
-    size_t height, kleidicv_color_conversion_t color_format) {
+    size_t height,
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   if (!is_yuv420sp_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
@@ -69,7 +55,7 @@ inline kleidicv_error_t yuv_semiplanar_to_rgb_validate(
 // pointer.
 inline const uint8_t *get_yuv420sp_uv_plane(const uint8_t *src,
                                             size_t src_stride, size_t width,
-                                            size_t height) {
+                                            size_t height) KLEIDICV_STREAMING {
   if (width == 0 || height == 0) {
     return src;
   }
@@ -79,7 +65,7 @@ inline const uint8_t *get_yuv420sp_uv_plane(const uint8_t *src,
 
 inline kleidicv_error_t yuv420sp_to_rgb_validate(
     const uint8_t *src, uint8_t *dst, size_t width, size_t height,
-    kleidicv_color_conversion_t color_format) {
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   CHECK_POINTERS(src);
   if (!is_yuv420sp_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
@@ -91,7 +77,7 @@ inline kleidicv_error_t yuv420sp_to_rgb_validate(
 
 inline kleidicv_error_t yuv420p_to_rgb_validate(
     const uint8_t *src, uint8_t *dst, size_t width, size_t height,
-    kleidicv_color_conversion_t color_format) {
+    kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   if (!is_yuv420p_format_supported(color_format)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
@@ -99,6 +85,10 @@ inline kleidicv_error_t yuv420p_to_rgb_validate(
   CHECK_IMAGE_SIZE(width, height);
   return KLEIDICV_OK;
 }
+
+}  // namespace KLEIDICV_TARGET_NAMESPACE
+
+namespace kleidicv {
 
 namespace neon {
 kleidicv_error_t yuv420sp_to_rgb_u8(const uint8_t *src_y, size_t src_y_stride,

@@ -20,7 +20,7 @@ KLEIDICV_DEFINE_C_API_WITH_SME2(kleidicv_yuv420p_to_rgb_stripe_u8,
                                 yuv420p_to_rgb_stripe_u8);
 KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv444_to_rgb_u8, yuv444_to_rgb_u8);
 KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv422_to_rgb_u8, yuv422_to_rgb_u8);
-KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv420sp_to_rgb_u8,
+KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv_semiplanar_to_rgb_u8,
                                    yuv420sp_to_rgb_u8);
 
 namespace kleidicv {
@@ -76,12 +76,13 @@ kleidicv_error_t kleidicv_yuv_to_rgb_u8(
     const uint8_t* src_uv =
         get_yuv420sp_uv_plane(src, src_stride, width, height);
     if constexpr (kUseSME) {
-      return kleidicv_yuv420sp_to_rgb_u8_sme(src, src_stride, src_uv,
+      return kleidicv_yuv_semiplanar_to_rgb_u8_sme(src, src_stride, src_uv,
+                                                   src_stride, dst, dst_stride,
+                                                   width, height, color_format);
+    }
+    return kleidicv_yuv_semiplanar_to_rgb_u8(src, src_stride, src_uv,
                                              src_stride, dst, dst_stride, width,
                                              height, color_format);
-    }
-    return kleidicv_yuv420sp_to_rgb_u8(src, src_stride, src_uv, src_stride, dst,
-                                       dst_stride, width, height, color_format);
   }
 
   if constexpr (kUseSME) {
@@ -96,40 +97,6 @@ kleidicv_error_t kleidicv_yuv_to_rgb_u8(
 }  // namespace kleidicv
 
 extern "C" {
-
-kleidicv_error_t kleidicv_yuv_semiplanar_to_rgb_u8(
-    const uint8_t* src_y, size_t src_y_stride, const uint8_t* src_uv,
-    size_t src_uv_stride, uint8_t* dst, size_t dst_stride, size_t width,
-    size_t height, kleidicv_color_conversion_t color_format) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
-  if (kleidicv_error_t err = kleidicv::yuv_semiplanar_to_rgb_validate(
-          src_y, src_uv, dst, width, height, color_format)) {
-    return err;
-  }
-  return kleidicv_yuv420sp_to_rgb_u8(src_y, src_y_stride, src_uv, src_uv_stride,
-                                     dst, dst_stride, width, height,
-                                     color_format);
-}
-
-kleidicv_error_t kleidicv_yuv_semiplanar_to_rgb_u8_sme(
-    const uint8_t* src_y, size_t src_y_stride, const uint8_t* src_uv,
-    size_t src_uv_stride, uint8_t* dst, size_t dst_stride, size_t width,
-    size_t height, kleidicv_color_conversion_t color_format) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
-  if (kleidicv_error_t err = kleidicv::yuv_semiplanar_to_rgb_validate(
-          src_y, src_uv, dst, width, height, color_format)) {
-    return err;
-  }
-  return kleidicv_yuv420sp_to_rgb_u8_sme(src_y, src_y_stride, src_uv,
-                                         src_uv_stride, dst, dst_stride, width,
-                                         height, color_format);
-}
 
 kleidicv_error_t kleidicv_yuv_to_rgb_u8(
     const uint8_t* src, size_t src_stride, uint8_t* dst, size_t dst_stride,

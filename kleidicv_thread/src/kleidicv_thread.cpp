@@ -691,7 +691,7 @@ kleidicv_error_t kleidicv_thread_yuv_semiplanar_to_rgb_u8(
     size_t row_begin = kleidicv::yuv420_luma_row(begin, height);
     size_t row_end = kleidicv::yuv420_luma_row(end, height);
     size_t row_uv = begin;
-    return kleidicv_yuv420sp_to_rgb_u8(
+    return kleidicv_yuv_semiplanar_to_rgb_u8(
         src_y + row_begin * src_y_stride, src_y_stride,
         src_uv + row_uv * src_uv_stride, src_uv_stride,
         dst + row_begin * dst_stride, dst_stride, width, row_end - row_begin,
