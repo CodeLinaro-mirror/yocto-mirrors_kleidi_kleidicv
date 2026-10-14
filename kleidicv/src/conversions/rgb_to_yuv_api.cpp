@@ -25,7 +25,7 @@ KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_rgb_to_yuv420sp_stripe_u8,
 
 namespace kleidicv {
 
-template <auto &StripeFunction>
+template <bool kUseSME>
 kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
                                uint8_t *dst, size_t dst_stride, size_t width,
                                size_t height,
@@ -38,12 +38,22 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
   if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV444) {
-    return kleidicv_rgb_to_yuv444_u8(src, src_stride, dst, dst_stride, width,
-                                     height, color_format);
+    if constexpr (kUseSME) {
+      return kleidicv_rgb_to_yuv444_u8_sme(src, src_stride, dst, dst_stride,
+                                           width, height, color_format);
+    } else {
+      return kleidicv_rgb_to_yuv444_u8(src, src_stride, dst, dst_stride, width,
+                                       height, color_format);
+    }
   }
   if (base_format == KLEIDICV_COLOR_CONVERSION_FMT_YUV422) {
-    return kleidicv_rgb_to_yuv422_u8(src, src_stride, dst, dst_stride, width,
-                                     height, color_format);
+    if constexpr (kUseSME) {
+      return kleidicv_rgb_to_yuv422_u8_sme(src, src_stride, dst, dst_stride,
+                                           width, height, color_format);
+    } else {
+      return kleidicv_rgb_to_yuv422_u8(src, src_stride, dst, dst_stride, width,
+                                       height, color_format);
+    }
   }
 
   // YUV420 uses 2x2 chroma blocks spanning adjacent rows, so the stripe API
@@ -53,8 +63,15 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
           rgb_to_yuv420p_validate(src, dst, width, height, color_format)) {
     return err;
   }
-  return StripeFunction(src, src_stride, dst, dst_stride, width, height,
-                        color_format, 0, yuv420_chroma_height(height));
+  if constexpr (kUseSME) {
+    return kleidicv_rgb_to_yuv420p_stripe_u8_sme(
+        src, src_stride, dst, dst_stride, width, height, color_format, 0,
+        yuv420_chroma_height(height));
+  } else {
+    return kleidicv_rgb_to_yuv420p_stripe_u8(src, src_stride, dst, dst_stride,
+                                             width, height, color_format, 0,
+                                             yuv420_chroma_height(height));
+  }
 }
 
 template <auto &StripeFunction>
@@ -101,15 +118,15 @@ kleidicv_error_t kleidicv_rgb_to_yuv_semiplanar_u8_sme(
 kleidicv_error_t kleidicv_rgb_to_yuv_u8(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height, kleidicv_color_conversion_t color_format) {
-  return kleidicv::rgb_to_yuv_u8<kleidicv_rgb_to_yuv420p_stripe_u8>(
-      src, src_stride, dst, dst_stride, width, height, color_format);
+  return kleidicv::rgb_to_yuv_u8<false>(src, src_stride, dst, dst_stride, width,
+                                        height, color_format);
 }
 
 kleidicv_error_t kleidicv_rgb_to_yuv_u8_sme(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height, kleidicv_color_conversion_t color_format) {
-  return kleidicv::rgb_to_yuv_u8<kleidicv_rgb_to_yuv420p_stripe_u8_sme>(
-      src, src_stride, dst, dst_stride, width, height, color_format);
+  return kleidicv::rgb_to_yuv_u8<true>(src, src_stride, dst, dst_stride, width,
+                                       height, color_format);
 }
 
 }  // extern "C"

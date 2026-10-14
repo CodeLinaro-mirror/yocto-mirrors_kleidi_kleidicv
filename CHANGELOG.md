@@ -23,6 +23,8 @@ This changelog aims to follow the guiding principles of
 - Tightened the existing scale check in the OpenCV HAL's resize implementation so
   mismatched factors cannot pass its tolerance for very large images. The shared
   INTER_LINEAR/INTER_AREA shortcut now requires exact 2:1 dimensions.
+- `kleidicv_rgb_to_yuv_u8_sme` now uses SME dispatch for YUV444 and YUV422
+  conversions as well as YUV420 planar conversions.
 
 ## 26.09 - 2026-09-30
 
