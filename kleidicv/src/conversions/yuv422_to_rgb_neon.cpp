@@ -389,61 +389,46 @@ class YUV422ToRGBxOrBGRx {
   }
 };
 
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t yuv422_to_rgb_for_format(
+    const uint8_t* src, size_t src_stride, uint8_t* dst, size_t dst_stride,
+    size_t width, size_t height) {
+  using Format = YUVFormatTraits<kFormat>;
+  using Operation = YUV422ToRGBxOrBGRx<Format::kBlueIndex, Format::kUIndex,
+                                       Format::kYIndex, Format::kChannels>;
+
+  return Operation::yuv2rgbx_operation(src, src_stride, dst, dst_stride, width,
+                                       height);
+}
+
+#define KLEIDICV_YUV422_TO_RGB_CASE(FORMAT)                                   \
+  case FORMAT:                                                                \
+    return yuv422_to_rgb_for_format<FORMAT>(src, src_stride, dst, dst_stride, \
+                                            width, height);
+
 KLEIDICV_TARGET_FN_ATTRS
 kleidicv_error_t yuv422_to_rgb_u8(const uint8_t* src, size_t src_stride,
                                   uint8_t* dst, size_t dst_stride, size_t width,
                                   size_t height,
                                   kleidicv_color_conversion_t color_format) {
   switch (color_format) {
-    case KLEIDICV_YUYV_TO_BGR:
-      return YUV422ToRGBxOrBGRx<0, 1, 0, 3>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_BGR:
-      return YUV422ToRGBxOrBGRx<0, 0, 1, 3>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YVYU_TO_BGR:
-      return YUV422ToRGBxOrBGRx<0, 3, 0, 3>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YUYV_TO_RGB:
-      return YUV422ToRGBxOrBGRx<2, 1, 0, 3>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_RGB:
-      return YUV422ToRGBxOrBGRx<2, 0, 1, 3>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YVYU_TO_RGB:
-      return YUV422ToRGBxOrBGRx<2, 3, 0, 3>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YUYV_TO_BGRA:
-      return YUV422ToRGBxOrBGRx<0, 1, 0, 4>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_BGRA:
-      return YUV422ToRGBxOrBGRx<0, 0, 1, 4>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YVYU_TO_BGRA:
-      return YUV422ToRGBxOrBGRx<0, 3, 0, 4>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YUYV_TO_RGBA:
-      return YUV422ToRGBxOrBGRx<2, 1, 0, 4>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_RGBA:
-      return YUV422ToRGBxOrBGRx<2, 0, 1, 4>::yuv2rgbx_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_BGR)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_BGR)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YVYU_TO_BGR)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_RGB)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_RGB)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YVYU_TO_RGB)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_BGRA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_BGRA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YVYU_TO_BGRA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_RGBA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_RGBA)
     default:  // KLEIDICV_YVYU_TO_RGBA, validated by the caller.
-      return YUV422ToRGBxOrBGRx<2, 3, 0, 4>::yuv2rgbx_operation(
+      return yuv422_to_rgb_for_format<KLEIDICV_YVYU_TO_RGBA>(
           src, src_stride, dst, dst_stride, width, height);
-      break;
   }
 }
+
+#undef KLEIDICV_YUV422_TO_RGB_CASE
 
 }  // namespace kleidicv::neon

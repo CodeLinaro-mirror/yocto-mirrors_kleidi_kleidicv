@@ -354,6 +354,20 @@ class RGBxorBGRxToYUV420 {
   static constexpr size_t scn = kAlpha ? 4 : 3;
 };
 
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t rgb_to_yuv420_for_format(
+    const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
+    uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
+    size_t begin, size_t end) {
+  using Format = YUVFormatTraits<kFormat>;
+  using Operation =
+      RGBxorBGRxToYUV420<Format::kAlpha, !Format::kBGR, Format::kInterleave>;
+
+  return Operation::rgb2yuv420_operation(src, src_stride, y_dst, y_stride,
+                                         uv_dst, uv_stride, width, height,
+                                         Format::kVFirst, begin, end);
+}
+
 }  // namespace kleidicv::neon
 
 #endif  // KLEIDICV_RGB_TO_YUV420_H

@@ -162,10 +162,21 @@ KLEIDICV_FORCE_INLINE kleidicv_error_t yuv2rgb_operation(
   return KLEIDICV_OK;
 }
 
-using YUVToRGB = YUVToRGBAll<false, false>;
-using YUVToRGBA = YUVToRGBAll<false, true>;
-using YUVToBGR = YUVToRGBAll<true, false>;
-using YUVToBGRA = YUVToRGBAll<true, true>;
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t yuv444_to_rgb_for_format(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height) {
+  using Format = YUVFormatTraits<kFormat>;
+
+  YUVToRGBAll<Format::kBGR, Format::kAlpha> operation;
+  return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride, width,
+                           height);
+}
+
+#define KLEIDICV_YUV444_TO_RGB_CASE(FORMAT)                                   \
+  case FORMAT:                                                                \
+    return yuv444_to_rgb_for_format<FORMAT>(src, src_stride, dst, dst_stride, \
+                                            width, height);
 
 KLEIDICV_TARGET_FN_ATTRS
 kleidicv_error_t yuv444_to_rgb_u8(const uint8_t *src, size_t src_stride,
@@ -173,30 +184,15 @@ kleidicv_error_t yuv444_to_rgb_u8(const uint8_t *src, size_t src_stride,
                                   size_t height,
                                   kleidicv_color_conversion_t color_format) {
   switch (color_format) {
-    case KLEIDICV_YUV444_TO_RGB: {
-      YUVToRGB operation;
-      return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
-
-    case KLEIDICV_YUV444_TO_BGR: {
-      YUVToBGR operation;
-      return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
-
-    case KLEIDICV_YUV444_TO_RGBA: {
-      YUVToRGBA operation;
-      return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
-
-    default: {  // KLEIDICV_YUV444_TO_BGRA, validated by the caller.
-      YUVToBGRA operation;
-      return yuv2rgb_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
+    KLEIDICV_YUV444_TO_RGB_CASE(KLEIDICV_YUV444_TO_RGB)
+    KLEIDICV_YUV444_TO_RGB_CASE(KLEIDICV_YUV444_TO_BGR)
+    KLEIDICV_YUV444_TO_RGB_CASE(KLEIDICV_YUV444_TO_RGBA)
+    default:  // KLEIDICV_YUV444_TO_BGRA, validated by the caller.
+      return yuv444_to_rgb_for_format<KLEIDICV_YUV444_TO_BGRA>(
+          src, src_stride, dst, dst_stride, width, height);
   }
 }
+
+#undef KLEIDICV_YUV444_TO_RGB_CASE
 
 }  // namespace kleidicv::neon

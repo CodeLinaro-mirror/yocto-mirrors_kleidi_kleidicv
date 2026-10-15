@@ -7,7 +7,7 @@
 
 #include <functional>
 
-#include "kleidicv/conversions/yuv_common.h"
+#include "kleidicv/conversions/rgb_to_yuv.h"
 #include "kleidicv/sve2.h"
 #include "yuv42x_coefficients.h"
 
@@ -391,6 +391,79 @@ class RGBxorBGRxToYUV420 {
   static constexpr int r_index = RGB ? 0 : 2;
   static constexpr size_t scn = kAlpha ? 4 : 3;
 };
+
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t rgb_to_yuv420_for_format(
+    const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
+    uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
+    size_t begin, size_t end) KLEIDICV_STREAMING {
+  using Format = YUVFormatTraits<kFormat>;
+  using Operation =
+      RGBxorBGRxToYUV420<Format::kAlpha, !Format::kBGR, Format::kInterleave>;
+
+  return Operation::rgb2yuv420_operation_sc(src, src_stride, y_dst, y_stride,
+                                            uv_dst, uv_stride, width, height,
+                                            Format::kVFirst, begin, end);
+}
+
+#define KLEIDICV_RGB_TO_YUV420P_CASE(FORMAT)                                   \
+  case FORMAT:                                                                 \
+    return rgb_to_yuv420_for_format<FORMAT>(src, src_stride, dst, dst_stride,  \
+                                            uv_dst, dst_stride, width, height, \
+                                            begin, end);
+
+KLEIDICV_TARGET_FN_ATTRS
+static inline kleidicv_error_t rgb_to_yuv420p_stripe_u8_sc(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height, kleidicv_color_conversion_t color_format,
+    size_t begin, size_t end) KLEIDICV_STREAMING {
+  uint8_t *uv_dst = dst + dst_stride * height;
+
+  switch (color_format) {
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_BGR_TO_YV12)
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_RGB_TO_YV12)
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_BGRA_TO_YV12)
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_RGBA_TO_YV12)
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_BGR_TO_IYUV)
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_RGB_TO_IYUV)
+    KLEIDICV_RGB_TO_YUV420P_CASE(KLEIDICV_BGRA_TO_IYUV)
+    default:  // KLEIDICV_RGBA_TO_IYUV, validated by the caller.
+      return rgb_to_yuv420_for_format<KLEIDICV_RGBA_TO_IYUV>(
+          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
+          begin, end);
+  }
+}
+
+#undef KLEIDICV_RGB_TO_YUV420P_CASE
+
+#define KLEIDICV_RGB_TO_YUV420SP_CASE(FORMAT)                                 \
+  case FORMAT:                                                                \
+    return rgb_to_yuv420_for_format<FORMAT>(src, src_stride, y_dst, y_stride, \
+                                            uv_dst, uv_stride, width, height, \
+                                            begin, end);
+
+KLEIDICV_TARGET_FN_ATTRS
+static inline kleidicv_error_t rgb_to_yuv420sp_stripe_u8_sc(
+    const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
+    uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
+    kleidicv_color_conversion_t color_format, size_t begin,
+    size_t end) KLEIDICV_STREAMING {
+  switch (color_format) {
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_BGR_TO_NV21)
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_RGB_TO_NV21)
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_BGRA_TO_NV21)
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_RGBA_TO_NV21)
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_BGR_TO_NV12)
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_RGB_TO_NV12)
+    KLEIDICV_RGB_TO_YUV420SP_CASE(KLEIDICV_BGRA_TO_NV12)
+    default:  // KLEIDICV_RGBA_TO_NV12, validated by the caller.
+      return rgb_to_yuv420_for_format<KLEIDICV_RGBA_TO_NV12>(
+          src, src_stride, y_dst, y_stride, uv_dst, uv_stride, width, height,
+          begin, end);
+  }
+}
+
+#undef KLEIDICV_RGB_TO_YUV420SP_CASE
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE
 

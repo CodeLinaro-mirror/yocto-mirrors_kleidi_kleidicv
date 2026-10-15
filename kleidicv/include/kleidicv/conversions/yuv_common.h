@@ -12,6 +12,30 @@
 // directions.
 namespace KLEIDICV_TARGET_NAMESPACE {
 
+// Compile-time layout properties shared by RGB-to-YUV and YUV-to-RGB backends.
+template <kleidicv_color_conversion_t kFormat>
+struct YUVFormatTraits {
+  static constexpr bool kBGR =
+      (kFormat & KLEIDICV_COLOR_CONVERSION_FLAG_BGR) != 0;
+  static constexpr bool kAlpha =
+      (kFormat & KLEIDICV_COLOR_CONVERSION_FLAG_ALPHA) != 0;
+  static constexpr bool kVFirst =
+      (kFormat & KLEIDICV_COLOR_CONVERSION_FLAG_VU) != 0;
+  static constexpr bool kInterleave =
+      (kFormat & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK) ==
+      KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP;
+  static constexpr size_t kBlueIndex = kBGR ? 0 : 2;
+  static constexpr size_t kChannels = kAlpha ? 4 : 3;
+
+  // Packed YUV422 byte indexes. U is at byte 0 in UYVY, byte 1 in YUYV,
+  // and byte 3 in YVYU.
+  static constexpr bool kChromaFirst =
+      (kFormat & KLEIDICV_COLOR_CONVERSION_FLAG_CHROMA_FIRST) != 0;
+  static constexpr size_t kLumaFirstUIndex = kVFirst ? 3 : 1;
+  static constexpr size_t kUIndex = kChromaFirst ? 0 : kLumaFirstUIndex;
+  static constexpr size_t kYIndex = kChromaFirst ? 1 : 0;
+};
+
 template <kleidicv_color_conversion_t kBaseFormat>
 struct YUVAllowedFlags;
 

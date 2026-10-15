@@ -254,61 +254,46 @@ class RGBxOrBGRxToYUV422 {
   }
 };
 
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t rgb_to_yuv422_for_format(
+    const uint8_t* src, size_t src_stride, uint8_t* dst, size_t dst_stride,
+    size_t width, size_t height) {
+  using Format = YUVFormatTraits<kFormat>;
+  using Operation = RGBxOrBGRxToYUV422<Format::kBlueIndex, Format::kUIndex,
+                                       Format::kYIndex, Format::kChannels>;
+
+  return Operation::rgbx2yuv422_operation(src, src_stride, dst, dst_stride,
+                                          width, height);
+}
+
+#define KLEIDICV_RGB_TO_YUV422_CASE(FORMAT)                                   \
+  case FORMAT:                                                                \
+    return rgb_to_yuv422_for_format<FORMAT>(src, src_stride, dst, dst_stride, \
+                                            width, height);
+
 KLEIDICV_TARGET_FN_ATTRS
 kleidicv_error_t rgb_to_yuv422_u8(const uint8_t* src, size_t src_stride,
                                   uint8_t* dst, size_t dst_stride, size_t width,
                                   size_t height,
                                   kleidicv_color_conversion_t color_format) {
   switch (color_format) {
-    case KLEIDICV_BGR_TO_YUYV:
-      return RGBxOrBGRxToYUV422<0, 1, 0, 3>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_BGR_TO_UYVY:
-      return RGBxOrBGRxToYUV422<0, 0, 1, 3>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_BGR_TO_YVYU:
-      return RGBxOrBGRxToYUV422<0, 3, 0, 3>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_RGB_TO_YUYV:
-      return RGBxOrBGRxToYUV422<2, 1, 0, 3>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_RGB_TO_UYVY:
-      return RGBxOrBGRxToYUV422<2, 0, 1, 3>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_RGB_TO_YVYU:
-      return RGBxOrBGRxToYUV422<2, 3, 0, 3>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_BGRA_TO_YUYV:
-      return RGBxOrBGRxToYUV422<0, 1, 0, 4>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_BGRA_TO_UYVY:
-      return RGBxOrBGRxToYUV422<0, 0, 1, 4>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_BGRA_TO_YVYU:
-      return RGBxOrBGRxToYUV422<0, 3, 0, 4>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_RGBA_TO_YUYV:
-      return RGBxOrBGRxToYUV422<2, 1, 0, 4>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_RGBA_TO_UYVY:
-      return RGBxOrBGRxToYUV422<2, 0, 1, 4>::rgbx2yuv422_operation(
-          src, src_stride, dst, dst_stride, width, height);
-      break;
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_BGR_TO_YUYV)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_BGR_TO_UYVY)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_BGR_TO_YVYU)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_RGB_TO_YUYV)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_RGB_TO_UYVY)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_RGB_TO_YVYU)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_BGRA_TO_YUYV)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_BGRA_TO_UYVY)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_BGRA_TO_YVYU)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_RGBA_TO_YUYV)
+    KLEIDICV_RGB_TO_YUV422_CASE(KLEIDICV_RGBA_TO_UYVY)
     default:  // KLEIDICV_RGBA_TO_YVYU, validated by the caller.
-      return RGBxOrBGRxToYUV422<2, 3, 0, 4>::rgbx2yuv422_operation(
+      return rgb_to_yuv422_for_format<KLEIDICV_RGBA_TO_YVYU>(
           src, src_stride, dst, dst_stride, width, height);
-      break;
   }
 }
+
+#undef KLEIDICV_RGB_TO_YUV422_CASE
 
 }  // namespace kleidicv::neon

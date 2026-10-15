@@ -46,11 +46,6 @@ class YUVSpToRGBxOrBGRx final : public YUV420XToRGBxOrBGRx<BGR, kAlpha> {
   }
 };  // end of class YUVSpToRGBxOrBGRx<bool, bool>
 
-using YUVSpToRGB = YUVSpToRGBxOrBGRx<false, false>;
-using YUVSpToRGBA = YUVSpToRGBxOrBGRx<false, true>;
-using YUVSpToBGR = YUVSpToRGBxOrBGRx<true, false>;
-using YUVSpToBGRA = YUVSpToRGBxOrBGRx<true, true>;
-
 template <typename OperationType, typename ScalarType>
 KLEIDICV_FORCE_INLINE kleidicv_error_t yuv2rgbx_operation(
     OperationType &operation, const ScalarType *src_y, size_t src_y_stride,
@@ -71,6 +66,24 @@ KLEIDICV_FORCE_INLINE kleidicv_error_t yuv2rgbx_operation(
   return KLEIDICV_OK;
 }
 
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t yuv420sp_to_rgb_for_format(
+    const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
+    size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
+    size_t height) KLEIDICV_STREAMING {
+  using Format = YUVFormatTraits<kFormat>;
+
+  YUVSpToRGBxOrBGRx<Format::kBGR, Format::kAlpha> operation{Format::kVFirst};
+  return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
+                            src_uv_stride, dst, dst_stride, width, height);
+}
+
+#define KLEIDICV_YUV420SP_TO_RGB_CASE(FORMAT)                                 \
+  case FORMAT:                                                                \
+    return yuv420sp_to_rgb_for_format<FORMAT>(src_y, src_y_stride, src_uv,    \
+                                              src_uv_stride, dst, dst_stride, \
+                                              width, height);
+
 KLEIDICV_TARGET_FN_ATTRS
 static kleidicv_error_t yuv420sp_to_rgb_u8_sc(
     const uint8_t *src_y, size_t src_y_stride, const uint8_t *src_uv,
@@ -87,55 +100,21 @@ static kleidicv_error_t yuv420sp_to_rgb_u8_sc(
   }
 
   switch (color_format) {
-    case KLEIDICV_NV21_TO_BGR: {
-      YUVSpToBGR operation{true};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    case KLEIDICV_NV21_TO_RGB: {
-      YUVSpToRGB operation{true};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    case KLEIDICV_NV21_TO_BGRA: {
-      YUVSpToBGRA operation{true};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    case KLEIDICV_NV21_TO_RGBA: {
-      YUVSpToRGBA operation{true};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    case KLEIDICV_NV12_TO_BGR: {
-      YUVSpToBGR operation{false};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    case KLEIDICV_NV12_TO_RGB: {
-      YUVSpToRGB operation{false};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    case KLEIDICV_NV12_TO_BGRA: {
-      YUVSpToBGRA operation{false};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
-
-    default: {  // KLEIDICV_NV12_TO_RGBA
-      YUVSpToRGBA operation{false};
-      return yuv2rgbx_operation(operation, src_y, src_y_stride, src_uv,
-                                src_uv_stride, dst, dst_stride, width, height);
-    }
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV21_TO_BGR)
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV21_TO_RGB)
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV21_TO_BGRA)
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV21_TO_RGBA)
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV12_TO_BGR)
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV12_TO_RGB)
+    KLEIDICV_YUV420SP_TO_RGB_CASE(KLEIDICV_NV12_TO_BGRA)
+    default:  // KLEIDICV_NV12_TO_RGBA, validated above.
+      return yuv420sp_to_rgb_for_format<KLEIDICV_NV12_TO_RGBA>(
+          src_y, src_y_stride, src_uv, src_uv_stride, dst, dst_stride, width,
+          height);
   }
 }
+
+#undef KLEIDICV_YUV420SP_TO_RGB_CASE
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE
 

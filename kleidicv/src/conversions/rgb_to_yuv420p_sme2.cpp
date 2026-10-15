@@ -12,57 +12,8 @@ rgb_to_yuv420p_stripe_u8(const uint8_t *src, size_t src_stride, uint8_t *dst,
                          size_t dst_stride, size_t width, size_t height,
                          kleidicv_color_conversion_t color_format, size_t begin,
                          size_t end) {
-  uint8_t *uv_dst = dst + dst_stride * height;
-
-  switch (color_format) {
-    case KLEIDICV_BGR_TO_YV12: {
-      return RGBxorBGRxToYUV420<false, false, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          true, begin, end);
-    }
-
-    case KLEIDICV_RGB_TO_YV12: {
-      return RGBxorBGRxToYUV420<false, true, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          true, begin, end);
-    }
-
-    case KLEIDICV_BGRA_TO_YV12: {
-      return RGBxorBGRxToYUV420<true, false, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          true, begin, end);
-    }
-
-    case KLEIDICV_RGBA_TO_YV12: {
-      return RGBxorBGRxToYUV420<true, true, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          true, begin, end);
-    }
-
-    case KLEIDICV_BGR_TO_IYUV: {
-      return RGBxorBGRxToYUV420<false, false, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          false, begin, end);
-    }
-
-    case KLEIDICV_RGB_TO_IYUV: {
-      return RGBxorBGRxToYUV420<false, true, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          false, begin, end);
-    }
-
-    case KLEIDICV_BGRA_TO_IYUV: {
-      return RGBxorBGRxToYUV420<true, false, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          false, begin, end);
-    }
-
-    default: {  // KLEIDICV_RGBA_TO_IYUV
-      return RGBxorBGRxToYUV420<true, true, false>::rgb2yuv420_operation_sc(
-          src, src_stride, dst, dst_stride, uv_dst, dst_stride, width, height,
-          false, begin, end);
-    }
-  }
+  return rgb_to_yuv420p_stripe_u8_sc(src, src_stride, dst, dst_stride, width,
+                                     height, color_format, begin, end);
 }
 
 }  // namespace kleidicv::sme2

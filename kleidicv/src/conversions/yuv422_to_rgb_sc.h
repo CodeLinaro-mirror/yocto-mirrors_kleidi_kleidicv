@@ -395,6 +395,22 @@ kleidicv_error_t dispatch_yuv422_to_rgb(bool use_unpack_path,
                                                        height);
 }
 
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t yuv422_to_rgb_for_format(
+    bool use_unpack_path, const uint8_t* src, size_t src_stride, uint8_t* dst,
+    size_t dst_stride, size_t width, size_t height) KLEIDICV_STREAMING {
+  using Format = YUVFormatTraits<kFormat>;
+
+  return dispatch_yuv422_to_rgb<Format::kBlueIndex, Format::kUIndex,
+                                Format::kYIndex, Format::kChannels>(
+      use_unpack_path, src, src_stride, dst, dst_stride, width, height);
+}
+
+#define KLEIDICV_YUV422_TO_RGB_CASE(FORMAT)                                   \
+  case FORMAT:                                                                \
+    return yuv422_to_rgb_for_format<FORMAT>(use_unpack_path, src, src_stride, \
+                                            dst, dst_stride, width, height);
+
 KLEIDICV_TARGET_FN_ATTRS
 static kleidicv_error_t yuv422_to_rgb_u8_sc(
     const uint8_t* src, size_t src_stride, uint8_t* dst, size_t dst_stride,
@@ -402,56 +418,24 @@ static kleidicv_error_t yuv422_to_rgb_u8_sc(
     kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   bool use_unpack_path = KLEIDICV_UNLIKELY(svcntb() >= 256);
   switch (color_format) {
-    case KLEIDICV_YUYV_TO_BGR:
-      return dispatch_yuv422_to_rgb<0, 1, 0, 3>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_BGR:
-      return dispatch_yuv422_to_rgb<0, 0, 1, 3>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YVYU_TO_BGR:
-      return dispatch_yuv422_to_rgb<0, 3, 0, 3>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YUYV_TO_RGB:
-      return dispatch_yuv422_to_rgb<2, 1, 0, 3>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_RGB:
-      return dispatch_yuv422_to_rgb<2, 0, 1, 3>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YVYU_TO_RGB:
-      return dispatch_yuv422_to_rgb<2, 3, 0, 3>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YUYV_TO_BGRA:
-      return dispatch_yuv422_to_rgb<0, 1, 0, 4>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_BGRA:
-      return dispatch_yuv422_to_rgb<0, 0, 1, 4>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YVYU_TO_BGRA:
-      return dispatch_yuv422_to_rgb<0, 3, 0, 4>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_YUYV_TO_RGBA:
-      return dispatch_yuv422_to_rgb<2, 1, 0, 4>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
-    case KLEIDICV_UYVY_TO_RGBA:
-      return dispatch_yuv422_to_rgb<2, 0, 1, 4>(
-          use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_BGR)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_BGR)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YVYU_TO_BGR)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_RGB)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_RGB)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YVYU_TO_RGB)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_BGRA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_BGRA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YVYU_TO_BGRA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_YUYV_TO_RGBA)
+    KLEIDICV_YUV422_TO_RGB_CASE(KLEIDICV_UYVY_TO_RGBA)
     default:  // KLEIDICV_YVYU_TO_RGBA, validated by the caller.
-      return dispatch_yuv422_to_rgb<2, 3, 0, 4>(
+      return yuv422_to_rgb_for_format<KLEIDICV_YVYU_TO_RGBA>(
           use_unpack_path, src, src_stride, dst, dst_stride, width, height);
-      break;
   }
 }
+
+#undef KLEIDICV_YUV422_TO_RGB_CASE
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE
 

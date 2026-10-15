@@ -278,39 +278,45 @@ kleidicv_error_t rgb2yuv_operation(OperationType operation,
   return KLEIDICV_OK;
 }
 
+template <kleidicv_color_conversion_t kFormat>
+KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t rgb_to_yuv444_for_format(
+    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
+    size_t width, size_t height) KLEIDICV_STREAMING {
+  using Format = YUVFormatTraits<kFormat>;
+
+  if constexpr (Format::kAlpha) {
+    svuint8x4_t indices;
+    RGBAToYUV<Format::kBGR> operation(indices);
+    return rgb2yuv_operation(operation, src, src_stride, dst, dst_stride, width,
+                             height);
+  } else {
+    RGBToYUV<Format::kBGR> operation;
+    return rgb2yuv_operation(operation, src, src_stride, dst, dst_stride, width,
+                             height);
+  }
+}
+
+#define KLEIDICV_RGB_TO_YUV444_CASE(FORMAT)                                   \
+  case FORMAT:                                                                \
+    return rgb_to_yuv444_for_format<FORMAT>(src, src_stride, dst, dst_stride, \
+                                            width, height);
+
 KLEIDICV_TARGET_FN_ATTRS
 static kleidicv_error_t rgb_to_yuv444_u8_sc(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height,
     kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
   switch (color_format) {
-    case KLEIDICV_RGB_TO_YUV444: {
-      RGBToYUV<false> operation;
-      return rgb2yuv_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
-
-    case KLEIDICV_BGR_TO_YUV444: {
-      RGBToYUV<true> operation;
-      return rgb2yuv_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
-
-    case KLEIDICV_RGBA_TO_YUV444: {
-      svuint8x4_t indices;
-      RGBAToYUV<false> operation(indices);
-      return rgb2yuv_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
-
-    default: {  // KLEIDICV_BGRA_TO_YUV444, validated by the caller.
-      svuint8x4_t indices;
-      RGBAToYUV<true> operation(indices);
-      return rgb2yuv_operation(operation, src, src_stride, dst, dst_stride,
-                               width, height);
-    }
+    KLEIDICV_RGB_TO_YUV444_CASE(KLEIDICV_RGB_TO_YUV444)
+    KLEIDICV_RGB_TO_YUV444_CASE(KLEIDICV_BGR_TO_YUV444)
+    KLEIDICV_RGB_TO_YUV444_CASE(KLEIDICV_RGBA_TO_YUV444)
+    default:  // KLEIDICV_BGRA_TO_YUV444, validated by the caller.
+      return rgb_to_yuv444_for_format<KLEIDICV_BGRA_TO_YUV444>(
+          src, src_stride, dst, dst_stride, width, height);
   }
 }
+
+#undef KLEIDICV_RGB_TO_YUV444_CASE
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE
 
