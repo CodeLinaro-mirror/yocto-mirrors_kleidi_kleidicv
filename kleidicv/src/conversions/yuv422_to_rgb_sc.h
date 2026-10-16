@@ -278,18 +278,18 @@ class YUV422ToRGBxOrBGRx {
     // the *_hi_* groups.
     svint16_t r0_even = svaddhnb(r_even_lo_lo, y_even_lo_lo);
     r0_even = svaddhnt(r0_even, r_even_lo_hi, y_even_lo_hi);
-    r0_even = svsra(svdup_n_s16(0), r0_even, kWeightScale - 16);
+    r0_even = svasr_n_s16_x(pg, r0_even, kWeightScale - 16);
     svint16_t r0_odd = svaddhnb(r_even_lo_lo, y_odd_lo_lo);
     r0_odd = svaddhnt(r0_odd, r_even_lo_hi, y_odd_lo_hi);
-    r0_odd = svsra(svdup_n_s16(0), r0_odd, kWeightScale - 16);
+    r0_odd = svasr_n_s16_x(pg, r0_odd, kWeightScale - 16);
     svuint8_t r0 = svqxtunt(svqxtunb(r0_even), r0_odd);
 
     svint16_t r1_even = svaddhnb(r_even_hi_lo, y_even_hi_lo);
     r1_even = svaddhnt(r1_even, r_even_hi_hi, y_even_hi_hi);
-    r1_even = svsra(svdup_n_s16(0), r1_even, kWeightScale - 16);
+    r1_even = svasr_n_s16_x(pg, r1_even, kWeightScale - 16);
     svint16_t r1_odd = svaddhnb(r_even_hi_lo, y_odd_hi_lo);
     r1_odd = svaddhnt(r1_odd, r_even_hi_hi, y_odd_hi_hi);
-    r1_odd = svsra(svdup_n_s16(0), r1_odd, kWeightScale - 16);
+    r1_odd = svasr_n_s16_x(pg, r1_odd, kWeightScale - 16);
     svuint8_t r1 = svqxtunt(svqxtunb(r1_even), r1_odd);
 
     // --- Compute the Green channel ---
@@ -315,20 +315,20 @@ class YUV422ToRGBxOrBGRx {
 
     svint16_t g0_even = svaddhnb(g_even_lo_lo, y_even_lo_lo);
     g0_even = svaddhnt(g0_even, g_even_lo_hi, y_even_lo_hi);
-    g0_even = svsra(svdup_n_s16(0), g0_even, kWeightScale - 16);
+    g0_even = svasr_n_s16_x(pg, g0_even, kWeightScale - 16);
     // Same rationale as for Red: reuse the g_even_* chroma base when adding
     // the odd Y lanes, avoiding redundant temporaries.
     svint16_t g0_odd = svaddhnb(g_even_lo_lo, y_odd_lo_lo);
     g0_odd = svaddhnt(g0_odd, g_even_lo_hi, y_odd_lo_hi);
-    g0_odd = svsra(svdup_n_s16(0), g0_odd, kWeightScale - 16);
+    g0_odd = svasr_n_s16_x(pg, g0_odd, kWeightScale - 16);
     svuint8_t g0 = svqxtunt(svqxtunb(g0_even), g0_odd);
 
     svint16_t g1_even = svaddhnb(g_even_hi_lo, y_even_hi_lo);
     g1_even = svaddhnt(g1_even, g_even_hi_hi, y_even_hi_hi);
-    g1_even = svsra(svdup_n_s16(0), g1_even, kWeightScale - 16);
+    g1_even = svasr_n_s16_x(pg, g1_even, kWeightScale - 16);
     svint16_t g1_odd = svaddhnb(g_even_hi_lo, y_odd_hi_lo);
     g1_odd = svaddhnt(g1_odd, g_even_hi_hi, y_odd_hi_hi);
-    g1_odd = svsra(svdup_n_s16(0), g1_odd, kWeightScale - 16);
+    g1_odd = svasr_n_s16_x(pg, g1_odd, kWeightScale - 16);
     svuint8_t g1 = svqxtunt(svqxtunb(g1_even), g1_odd);
 
     // --- Compute the Blue channel ---
@@ -345,19 +345,19 @@ class YUV422ToRGBxOrBGRx {
 
     svint16_t b0_even = svaddhnb(b_even_lo_lo, y_even_lo_lo);
     b0_even = svaddhnt(b0_even, b_even_lo_hi, y_even_lo_hi);
-    b0_even = svsra(svdup_n_s16(0), b0_even, kWeightScale - 16);
+    b0_even = svasr_n_s16_x(pg, b0_even, kWeightScale - 16);
     // Blue follows the same pattern, so reuse the b_even_* vectors for odd Y.
     svint16_t b0_odd = svaddhnb(b_even_lo_lo, y_odd_lo_lo);
     b0_odd = svaddhnt(b0_odd, b_even_lo_hi, y_odd_lo_hi);
-    b0_odd = svsra(svdup_n_s16(0), b0_odd, kWeightScale - 16);
+    b0_odd = svasr_n_s16_x(pg, b0_odd, kWeightScale - 16);
     svuint8_t b0 = svqxtunt(svqxtunb(b0_even), b0_odd);
 
     svint16_t b1_even = svaddhnb(b_even_hi_lo, y_even_hi_lo);
     b1_even = svaddhnt(b1_even, b_even_hi_hi, y_even_hi_hi);
-    b1_even = svsra(svdup_n_s16(0), b1_even, kWeightScale - 16);
+    b1_even = svasr_n_s16_x(pg, b1_even, kWeightScale - 16);
     svint16_t b1_odd = svaddhnb(b_even_hi_lo, y_odd_hi_lo);
     b1_odd = svaddhnt(b1_odd, b_even_hi_hi, y_odd_hi_hi);
-    b1_odd = svsra(svdup_n_s16(0), b1_odd, kWeightScale - 16);
+    b1_odd = svasr_n_s16_x(pg, b1_odd, kWeightScale - 16);
     svuint8_t b1 = svqxtunt(svqxtunb(b1_even), b1_odd);
 
     if constexpr (dcn > 3) {

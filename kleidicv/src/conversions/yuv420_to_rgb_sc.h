@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2025 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -91,52 +91,52 @@ class YUV420XToRGBxOrBGRx {
     // Is there a better way to do this?
     svint16_t r0_b = svaddhnb(r_sub_y_b, y0_m16_bb);
     r0_b = svaddhnt(r0_b, r_sub_y_t, y0_m16_bt);
-    r0_b = svsra(svdup_n_s16(0), r0_b, kWeightScale - 16);
+    r0_b = svasr_n_s16_x(pg, r0_b, kWeightScale - 16);
     svint16_t r0_t = svaddhnb(r_sub_y_b, y0_m16_tb);
     r0_t = svaddhnt(r0_t, r_sub_y_t, y0_m16_tt);
-    r0_t = svsra(svdup_n_s16(0), r0_t, kWeightScale - 16);
+    r0_t = svasr_n_s16_x(pg, r0_t, kWeightScale - 16);
     svuint8_t r0 = svqxtunt(svqxtunb(r0_b), r0_t);
 
     svint16_t r1_b = svaddhnb(r_sub_y_b, y1_m16_bb);
     r1_b = svaddhnt(r1_b, r_sub_y_t, y1_m16_bt);
-    r1_b = svsra(svdup_n_s16(0), r1_b, kWeightScale - 16);
+    r1_b = svasr_n_s16_x(pg, r1_b, kWeightScale - 16);
     svint16_t r1_t = svaddhnb(r_sub_y_b, y1_m16_tb);
     r1_t = svaddhnt(r1_t, r_sub_y_t, y1_m16_tt);
-    r1_t = svsra(svdup_n_s16(0), r1_t, kWeightScale - 16);
+    r1_t = svasr_n_s16_x(pg, r1_t, kWeightScale - 16);
     svuint8_t r1 = svqxtunt(svqxtunb(r1_b), r1_t);
 
     // G = (G - Y) + Y
     svint16_t g0_b = svaddhnb(g_sub_y_b, y0_m16_bb);
     g0_b = svaddhnt(g0_b, g_sub_y_t, y0_m16_bt);
-    g0_b = svsra(svdup_n_s16(0), g0_b, kWeightScale - 16);
+    g0_b = svasr_n_s16_x(pg, g0_b, kWeightScale - 16);
     svint16_t g0_t = svaddhnb(g_sub_y_b, y0_m16_tb);
     g0_t = svaddhnt(g0_t, g_sub_y_t, y0_m16_tt);
-    g0_t = svsra(svdup_n_s16(0), g0_t, kWeightScale - 16);
+    g0_t = svasr_n_s16_x(pg, g0_t, kWeightScale - 16);
     svuint8_t g0 = svqxtunt(svqxtunb(g0_b), g0_t);
 
     svint16_t g1_b = svaddhnb(g_sub_y_b, y1_m16_bb);
     g1_b = svaddhnt(g1_b, g_sub_y_t, y1_m16_bt);
-    g1_b = svsra(svdup_n_s16(0), g1_b, kWeightScale - 16);
+    g1_b = svasr_n_s16_x(pg, g1_b, kWeightScale - 16);
     svint16_t g1_t = svaddhnb(g_sub_y_b, y1_m16_tb);
     g1_t = svaddhnt(g1_t, g_sub_y_t, y1_m16_tt);
-    g1_t = svsra(svdup_n_s16(0), g1_t, kWeightScale - 16);
+    g1_t = svasr_n_s16_x(pg, g1_t, kWeightScale - 16);
     svuint8_t g1 = svqxtunt(svqxtunb(g1_b), g1_t);
 
     // B = (B - Y) + Y
     svint16_t b0_b = svaddhnb(b_sub_y_b, y0_m16_bb);
     b0_b = svaddhnt(b0_b, b_sub_y_t, y0_m16_bt);
-    b0_b = svsra(svdup_n_s16(0), b0_b, kWeightScale - 16);
+    b0_b = svasr_n_s16_x(pg, b0_b, kWeightScale - 16);
     svint16_t b0_t = svaddhnb(b_sub_y_b, y0_m16_tb);
     b0_t = svaddhnt(b0_t, b_sub_y_t, y0_m16_tt);
-    b0_t = svsra(svdup_n_s16(0), b0_t, kWeightScale - 16);
+    b0_t = svasr_n_s16_x(pg, b0_t, kWeightScale - 16);
     svuint8_t b0 = svqxtunt(svqxtunb(b0_b), b0_t);
 
     svint16_t b1_b = svaddhnb(b_sub_y_b, y1_m16_bb);
     b1_b = svaddhnt(b1_b, b_sub_y_t, y1_m16_bt);
-    b1_b = svsra(svdup_n_s16(0), b1_b, kWeightScale - 16);
+    b1_b = svasr_n_s16_x(pg, b1_b, kWeightScale - 16);
     svint16_t b1_t = svaddhnb(b_sub_y_b, y1_m16_tb);
     b1_t = svaddhnt(b1_t, b_sub_y_t, y1_m16_tt);
-    b1_t = svsra(svdup_n_s16(0), b1_t, kWeightScale - 16);
+    b1_t = svasr_n_s16_x(pg, b1_t, kWeightScale - 16);
     svuint8_t b1 = svqxtunt(svqxtunb(b1_b), b1_t);
 
     if constexpr (kAlpha) {
