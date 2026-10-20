@@ -57,6 +57,9 @@ PIDS+=("$!")
 LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/api-sme2-%p.profraw" KLEIDICV_PREFER_SME_BACKEND=ON qemu-aarch64 -cpu "${QEMU_SME_CPU}" \
   ${TEST_DIR}/api/kleidicv-api-test --vector-length=64 &
 PIDS+=("$!")
+LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/backend-comparison-%p.profraw" qemu-aarch64 -cpu "${QEMU_SME_CPU}" \
+  ${TEST_DIR}/backend_comparison/kleidicv-backend-comparison-test --vector-length=64 &
+PIDS+=("$!")
 
 FAILED=0
 for PID in "${PIDS[@]}"; do

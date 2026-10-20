@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstring>
 
 #include "framework/generator.h"
 #include "framework/operation.h"
@@ -48,10 +49,7 @@ class ExpTestSpecial<float> final : public UnaryOperationTest<float> {
 
     for (size_t i = 0; i < inputs.size(); ++i) {
       std::get<0>(test_elements_[i]) = inputs[i];
-      // Expected values calculated as doubles to have 'perfect' references.
-      // As the NEON implementation reuses the toolchain's expf implementation
-      // for the tail path, the test expects that the error for expf is also
-      // less than 1 ULP.
+      // Calculate references in double precision before rounding to float.
       std::get<1>(test_elements_[i]) =
           static_cast<float>(exp(static_cast<double>(inputs[i])));
     }
@@ -103,10 +101,7 @@ class ExpTestCustomBase<float> {
                             test::Array2D<float>& expected) {
     for (size_t i = 0; i < input.height(); ++i) {
       for (size_t j = 0; j < input.width(); ++j) {
-        // Expected values calculated as doubles to have 'perfect' references.
-        // As the NEON implementation reuses the toolchain's expf implementation
-        // for the tail path, the test expects that the error for expf is also
-        // less than 1 ULP.
+        // Calculate references in double precision before rounding to float.
 
         // Seems like clang-tidy does not understand what the fill member
         // function of test::Array2D does, so these exceptions are required
@@ -213,6 +208,34 @@ TYPED_TEST(Exp, SpecialValues) {
 }
 
 TYPED_TEST(Exp, RandomValues) { ExpTestRandom<TypeParam>{}.test(); }
+
+TYPED_TEST(Exp, BitExactExecutionPaths) {
+  const size_t kWidth = test::Options::vector_lanes<TypeParam>() + 1;
+  constexpr size_t kHeight = 1;
+  const std::vector<TypeParam> inputs = {-55.1533203125F, -100.07F, 88.947F,
+                                         -105.31F};
+  // Check fixed results for a rounding regression, subnormal output, overflow,
+  // and underflow across all vector backends and the Neon tail path.
+  const std::vector<TypeParam> outputs = {
+      1.11485235e-24F, 3.50324616e-44F,
+      std::numeric_limits<TypeParam>::infinity(), 0.0F};
+  test::Array2D<TypeParam> input{kWidth, kHeight};
+  test::Array2D<TypeParam> expected{kWidth, kHeight};
+  test::Array2D<TypeParam> actual{kWidth, kHeight};
+
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    SCOPED_TRACE(inputs[i]);
+    input.fill(inputs[i]);
+    expected.fill(outputs[i]);
+    ASSERT_EQ(KLEIDICV_OK,
+              exp<TypeParam>()(input.data(), input.stride(), actual.data(),
+                               actual.stride(), kWidth, kHeight));
+    // Compare bits: EXPECT_EQ_ARRAY2D compares numeric values and cannot
+    // distinguish signed zeros or reliably detect NaN bit differences.
+    EXPECT_EQ(0,
+              std::memcmp(expected.data(), actual.data(), expected.stride()));
+  }
+}
 
 TYPED_TEST(Exp, InPlaceOperation) {
   const size_t kWidth = test::Options::vector_length() + 1;

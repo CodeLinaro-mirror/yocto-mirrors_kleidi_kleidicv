@@ -95,6 +95,9 @@ PIDS+=("$!")
 LLVM_PROFILE_FILE="${PROFILE_DIR}/api-sme2-%p.profraw" KLEIDICV_PREFER_SME_BACKEND=ON qemu-aarch64 -cpu "${QEMU_SME_CPU}" \
   ${TEST_DIR}/api/kleidicv-api-test --gtest_output=xml:build/ci/test-results/clang-sme2/ --vector-length=64 &
 PIDS+=("$!")
+LLVM_PROFILE_FILE="${PROFILE_DIR}/backend-comparison-%p.profraw" qemu-aarch64 -cpu "${QEMU_SME_CPU}" \
+  ${TEST_DIR}/backend_comparison/kleidicv-backend-comparison-test --gtest_output=xml:build/ci/test-results/clang-backend-comparison/ --vector-length=64 &
+PIDS+=("$!")
 
 for PID in "${PIDS[@]}"; do
   wait "${PID}" || TESTRESULT=1
@@ -109,6 +112,7 @@ scripts/prefix_testsuite_names.py build/ci/test-results/clang-sve2048/kleidicv-a
 scripts/prefix_testsuite_names.py build/ci/test-results/clang-sme/kleidicv-api-test.xml "clang-sme." || TESTRESULT=1
 scripts/prefix_testsuite_names.py build/ci/test-results/clang-sme-api/kleidicv-api-test.xml "clang-sme-api." || TESTRESULT=1
 scripts/prefix_testsuite_names.py build/ci/test-results/clang-sme2/kleidicv-api-test.xml "clang-sme2." || TESTRESULT=1
+scripts/prefix_testsuite_names.py build/ci/test-results/clang-backend-comparison/kleidicv-backend-comparison-test.xml "clang-backend-comparison." || TESTRESULT=1
 
 # Generate test coverage report.
 LLVM_COV=llvm-cov scripts/generate_coverage_report.py build/ci/clang | tee build/ci/coverage-summary.txt

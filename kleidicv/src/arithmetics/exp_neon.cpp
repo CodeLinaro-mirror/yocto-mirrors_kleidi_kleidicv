@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <cmath>
-
 #include "kleidicv/arithmetics/exp_constants.h"
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/neon.h"
@@ -45,7 +43,9 @@ class Exp<float> final : public UnrollOnce {
     return scale * poly;
   }
 
-  float scalar_path(float src) { return expf(src); }
+  float scalar_path(float src) {
+    return vgetq_lane_f32(vector_path(vdupq_n_f32(src)), 0);
+  }
 
  private:
   static int v_any_u32(uint32x4_t x) {

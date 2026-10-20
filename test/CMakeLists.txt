@@ -100,3 +100,12 @@ add_custom_target(
   DEPENDS kleidicv-test
   USES_TERMINAL
 )
+
+if (KLEIDICV_ENABLE_SVE2 AND KLEIDICV_ENABLE_SME AND KLEIDICV_ENABLE_SME2)
+  add_subdirectory(backend_comparison)
+  add_dependencies(kleidicv-test kleidicv-backend-comparison-test)
+  add_custom_command(
+    TARGET check-kleidicv POST_BUILD
+    COMMAND kleidicv-backend-comparison-test
+  )
+endif()

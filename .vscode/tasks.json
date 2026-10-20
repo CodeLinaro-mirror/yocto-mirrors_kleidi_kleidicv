@@ -264,6 +264,23 @@
       }
     },
     {
+      "label": "Backend comparison tests",
+      "type": "process",
+      "command": "qemu-aarch64",
+      "args": [
+        "-cpu",
+        "max,sve128=on,sve-default-vector-length=16,sme512=on,sme-default-vector-length=64",
+        "${workspaceFolder}/build/kleidicv/test/backend_comparison/kleidicv-backend-comparison-test",
+        "--vector-length=64"
+      ],
+      "dependsOn": [
+        "Build KleidiCV"
+      ],
+      "group": {
+        "kind": "test"
+      }
+    },
+    {
       "label": "All API tests",
       "dependsOn": [
         "Neon API tests",

@@ -1120,8 +1120,7 @@ KLEIDICV_API_DECLARATION(kleidicv_scale_f32_sme, const float *src,
 /// Exponential function, input is the elements in `src`, output is the elements
 /// in `dst`.
 ///
-/// In case of `float` type the maximum error is 0.36565+0.5 ULP, or the error
-/// of the toolchain's expf implementation, if it is bigger.
+/// In case of `float` type the maximum error is 0.36565+0.5 ULP.
 ///
 /// Source and destination data length is `width * height`. Number of elements
 /// is limited to @ref KLEIDICV_MAX_IMAGE_PIXELS.
