@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# Compare backends directly for operations whose API tests allow an error
+# tolerance instead of requiring bit-exact results. Operations with bit-exact
+# API references are already checked against the same results on every backend.
 file(GLOB kleidicv_backend_comparison_test_sources CONFIGURE_DEPENDS "*.h" "test_*.cpp")
 
 list(APPEND kleidicv_backend_comparison_test_sources ${KLEIDICV_TEST_FRAMEWORK_SOURCES})

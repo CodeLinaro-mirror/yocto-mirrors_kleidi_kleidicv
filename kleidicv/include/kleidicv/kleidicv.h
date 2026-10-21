@@ -255,10 +255,13 @@ KLEIDICV_API_DECLARATION(kleidicv_min_max_s32_sme, const int32_t *src,
                          size_t src_stride, size_t width, size_t height,
                          int32_t *min_value, int32_t *max_value);
 /// @copydoc kleidicv_min_max_u8
+///
+/// If any input is NaN, both results are the canonical quiet NaN (0x7fc00000).
+/// When choosing between -0 and +0, minimum selects -0 and maximum selects +0.
 KLEIDICV_API_DECLARATION(kleidicv_min_max_f32, const float *src,
                          size_t src_stride, size_t width, size_t height,
                          float *min_value, float *max_value);
-/// @copydoc kleidicv_min_max_u8
+/// @copydoc kleidicv_min_max_f32
 KLEIDICV_API_DECLARATION(kleidicv_min_max_f32_sme, const float *src,
                          size_t src_stride, size_t width, size_t height,
                          float *min_value, float *max_value);

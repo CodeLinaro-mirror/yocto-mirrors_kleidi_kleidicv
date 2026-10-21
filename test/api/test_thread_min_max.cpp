@@ -41,21 +41,50 @@ KLEIDICV_THREAD_MIN_MAX(int32_t, s32);
 KLEIDICV_THREAD_MIN_MAX(float, f32);
 
 TEST(MinMaxThread, SimpleFloat) {
-  size_t width = 10, height = 10;
-  test::Array2D<float> src(width, height);
+  const size_t width = 2 * test::Options::vector_lanes<float>() + 1;
+  const size_t height = width;
+  test::Array2D<float> src{width, height, 7};
+  ASSERT_TRUE(src.valid());
 
-  for (auto value : {1.0F, -1.0F}) {
-    src.fill(value);
-
-    float minval = 1, maxval = -1;
-
-    kleidicv_error_t result =
-        thread_min_max<float>()(src.data(), src.stride(), width, height,
-                                &minval, &maxval, get_multithreading_fake(3));
-
-    EXPECT_EQ(KLEIDICV_OK, result);
-    EXPECT_EQ(value, minval);
-    EXPECT_EQ(value, maxval);
+  const float infinity = std::numeric_limits<float>::infinity();
+  struct Elements {
+    float first, second, expected_min, expected_max;
+  };
+  const Elements elements[] = {
+      // Uniform finite inputs: both results equal the input value.
+      {1.0F, 1.0F, 1.0F, 1.0F},
+      {-1.0F, -1.0F, -1.0F, -1.0F},
+      // Opposite zero signs: minimum selects -0 and maximum selects +0.
+      {0.0F, -0.0F, -0.0F, 0.0F},
+      // Reversing the zero order must preserve the selected result signs.
+      {-0.0F, 0.0F, -0.0F, 0.0F},
+      // Uniform positive zeros: both results retain the positive sign.
+      {0.0F, 0.0F, 0.0F, 0.0F},
+      // Uniform negative zeros: both results retain the negative sign.
+      {-0.0F, -0.0F, -0.0F, -0.0F},
+      // Uniform +infinity: unused batch slots must not lower the minimum.
+      {infinity, infinity, infinity, infinity},
+      // Uniform -infinity: unused batch slots must not raise the maximum.
+      {-infinity, -infinity, -infinity, -infinity}};
+  for (const auto& data : elements) {
+    src.fill([&](size_t y, size_t x) {
+      return (y * width + x) % 2 ? data.second : data.first;
+    });
+    for (size_t thread_count : {1, 3}) {
+      SCOPED_TRACE(testing::Message()
+                   << "first=" << data.first << ", second=" << data.second
+                   << ", thread_count=" << thread_count);
+      float minval = 10, maxval = 20;
+      EXPECT_EQ(KLEIDICV_OK,
+                thread_min_max<float>()(src.data(), src.stride(), width, height,
+                                        &minval, &maxval,
+                                        get_multithreading_fake(thread_count)));
+      // Compare representations to distinguish positive and negative zero.
+      EXPECT_EQ(test::float_to_bits(data.expected_min),
+                test::float_to_bits(minval));
+      EXPECT_EQ(test::float_to_bits(data.expected_max),
+                test::float_to_bits(maxval));
+    }
   }
 }
 
@@ -151,7 +180,7 @@ TEST_F(ThreadMinMaxValidation, OptionalOutputsStillDispatch) {
 
 #ifdef KLEIDICV_ALLOCATION_TESTS
 TEST_F(ThreadMinMaxValidation, MinMaxAllocationFailureReturnsBeforeScheduling) {
-  const auto check = [this](const char *name, auto min_max, auto src) {
+  const auto check = [this](const char* name, auto min_max, auto src) {
     SCOPED_TRACE(name);
     for (bool request_min : {true, false}) {
       SCOPED_TRACE(request_min ? "minimum" : "maximum");
@@ -250,7 +279,48 @@ TYPED_TEST_P(MinMaxThread, NullArguments) {
   EXPECT_EQ(0, max_value);
 }
 
-REGISTER_TYPED_TEST_SUITE_P(MinMaxThread, CompareWithSingle, NullArguments);
+TYPED_TEST_P(MinMaxThread, MergeFailure) {
+  // Plain function pointers require static state for the failure callback.
+  static auto original = min_max<TypeParam>();
+  static bool fail_minimum;
+  static size_t merge_calls;
+  struct RestoreBackend {
+    ~RestoreBackend() { min_max<TypeParam>() = original; }
+  } restore;
+  original = min_max<TypeParam>();
+
+  // CPU and SME batches both use the CPU backend for merging partial results.
+  min_max<TypeParam>() = [](const TypeParam* src, size_t stride, size_t width,
+                            size_t height, TypeParam* minimum,
+                            TypeParam* maximum) {
+    // The input batch is 3x2; each merge reduces a single row of two values.
+    if (width == 2 && height == 1) {
+      ++merge_calls;
+      if ((minimum != nullptr) == fail_minimum) {
+        return KLEIDICV_ERROR_CONTEXT_MISMATCH;
+      }
+    }
+    return original(src, stride, width, height, minimum, maximum);
+  };
+
+  TypeParam src[] = {3, 1, 4, 2, 6, 5};
+  for (bool fail_min : {true, false}) {
+    SCOPED_TRACE(fail_min ? "minimum merge" : "maximum merge");
+    fail_minimum = fail_min;
+    merge_calls = 0;
+    TypeParam minimum = 10, maximum = 20;
+    EXPECT_EQ(
+        KLEIDICV_ERROR_CONTEXT_MISMATCH,
+        thread_min_max<TypeParam>()(src, 3 * sizeof(TypeParam), 3, 2, &minimum,
+                                    &maximum, get_multithreading_fake(1)));
+    EXPECT_EQ(fail_min ? 1U : 2U, merge_calls);
+    EXPECT_EQ(fail_min ? 10 : 1, minimum);
+    EXPECT_EQ(20, maximum);
+  }
+}
+
+REGISTER_TYPED_TEST_SUITE_P(MinMaxThread, CompareWithSingle, NullArguments,
+                            MergeFailure);
 
 using MinMaxElementTypes =
     ::testing::Types<int8_t, uint8_t, int16_t, uint16_t, int32_t, float>;

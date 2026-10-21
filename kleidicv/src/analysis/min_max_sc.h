@@ -30,12 +30,12 @@ class MinMax final : public UnrollTwice {
 
   ScalarType get_min() const KLEIDICV_STREAMING {
     auto pg = VecTraits::svptrue();
-    return svminv(pg, vmin_);
+    return min_max_canonicalize_nan(svminv(pg, vmin_));
   }
 
   ScalarType get_max() const KLEIDICV_STREAMING {
     auto pg = VecTraits::svptrue();
-    return svmaxv(pg, vmax_);
+    return min_max_canonicalize_nan(svmaxv(pg, vmax_));
   }
 
  private:
@@ -55,8 +55,8 @@ kleidicv_error_t min_max_sc(const ScalarType *src, size_t src_stride,
 
   using VecTraits = KLEIDICV_TARGET_NAMESPACE::VecTraits<ScalarType>;
   using VectorType = typename VecTraits::VectorType;
-  VectorType vmin = VecTraits::svdup(std::numeric_limits<ScalarType>::max());
-  VectorType vmax = VecTraits::svdup(std::numeric_limits<ScalarType>::lowest());
+  VectorType vmin = VecTraits::svdup(min_max_initial_minimum<ScalarType>());
+  VectorType vmax = VecTraits::svdup(min_max_initial_maximum<ScalarType>());
 
   MinMax<ScalarType> operation{vmin, vmax};
 

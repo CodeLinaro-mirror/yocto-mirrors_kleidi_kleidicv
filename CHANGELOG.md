@@ -26,6 +26,8 @@ This changelog aims to follow the guiding principles of
   `0 <= begin < end <= task_count`.
 
 ### Fixed
+- Fixed incorrect floating-point min/max results for inputs containing only
+  positive infinity or only negative infinity.
 - Tightened the existing scale check in the OpenCV HAL's resize implementation so
   mismatched factors cannot pass its tolerance for very large images. The shared
   INTER_LINEAR/INTER_AREA shortcut now requires exact 2:1 dimensions.

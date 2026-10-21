@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "framework/array.h"
+#include "framework/utils.h"
 #include "kleidicv/kleidicv.h"
 
 namespace {
@@ -185,8 +186,8 @@ void run_min_max_pair(const char* name, MinMaxFn<T> cpu_fn,
                                 &min_sme, &max_sme))
       << name;
   if constexpr (kIsFloatLike<T>) {
-    EXPECT_NEAR(min_cpu, min_sme, 1e-6F);
-    EXPECT_NEAR(max_cpu, max_sme, 1e-6F);
+    EXPECT_EQ(test::float_to_bits(min_cpu), test::float_to_bits(min_sme));
+    EXPECT_EQ(test::float_to_bits(max_cpu), test::float_to_bits(max_sme));
   } else {
     EXPECT_EQ(min_cpu, min_sme);
     EXPECT_EQ(max_cpu, max_sme);

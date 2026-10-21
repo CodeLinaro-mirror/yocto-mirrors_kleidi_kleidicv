@@ -8,7 +8,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <limits>
 #include <new>
 #include <utility>
 
@@ -680,26 +679,24 @@ kleidicv_error_t kleidicv_thread_rgb_to_yuv_semiplanar_u8(
   return parallel_batches(callback, mt, kleidicv::yuv420_chroma_height(height));
 }
 
-template <typename T>
-void reduce_min(const T *values, size_t count, T *result) {
-  if (!result) {
-    return;
+// Treat each partial-result array as one image row. Reusing the dispatched
+// backend provides vectorized reduction and the same floating-point handling
+// as the image batches, including neutral values in unused batch slots.
+template <typename T, typename FunctionType>
+kleidicv_error_t reduce_min_max(FunctionType min_max_func, const T *min_values,
+                                const T *max_values, size_t count, T *min_value,
+                                T *max_value) {
+  const size_t stride = count * sizeof(T);
+  if (min_value) {
+    if (kleidicv_error_t err =
+            min_max_func(min_values, stride, count, 1, min_value, nullptr)) {
+      return err;
+    }
   }
-  *result = std::numeric_limits<T>::max();
-  for (size_t i = 0; i < count; ++i) {
-    *result = std::min(*result, values[i]);
+  if (max_value) {
+    return min_max_func(max_values, stride, count, 1, nullptr, max_value);
   }
-}
-
-template <typename T>
-void reduce_max(const T *values, size_t count, T *result) {
-  if (!result) {
-    return;
-  }
-  *result = std::numeric_limits<T>::lowest();
-  for (size_t i = 0; i < count; ++i) {
-    *result = std::max(*result, values[i]);
-  }
+  return KLEIDICV_OK;
 }
 
 template <typename ScalarType, typename FunctionType>
@@ -718,11 +715,11 @@ kleidicv_error_t parallel_min_max(FunctionType min_max_func,
   kleidicv::thread_internal::HeapArray<ScalarType> min_values;
   kleidicv::thread_internal::HeapArray<ScalarType> max_values;
   if ((p_min_value &&
-       !min_values.allocate_and_fill(value_count,
-                                     std::numeric_limits<ScalarType>::max())) ||
+       !min_values.allocate_and_fill(
+           value_count, kleidicv::min_max_initial_minimum<ScalarType>())) ||
       (p_max_value &&
        !max_values.allocate_and_fill(
-           value_count, std::numeric_limits<ScalarType>::lowest()))) {
+           value_count, kleidicv::min_max_initial_maximum<ScalarType>()))) {
     return KLEIDICV_ERROR_ALLOCATION;
   }
 
@@ -733,10 +730,11 @@ kleidicv_error_t parallel_min_max(FunctionType min_max_func,
                         p_max_value ? max_values.data() + begin : nullptr);
   };
 
-  auto return_val = parallel_batches(callback, mt, height);
-  reduce_min(min_values.data(), height, p_min_value);
-  reduce_max(max_values.data(), height, p_max_value);
-  return return_val;
+  if (kleidicv_error_t err = parallel_batches(callback, mt, height)) {
+    return err;
+  }
+  return reduce_min_max(min_max_func, min_values.data(), max_values.data(),
+                        height, p_min_value, p_max_value);
 }
 
 #if KLEIDICV_ENABLE_SME_THREAD_DISPATCH
@@ -754,11 +752,11 @@ kleidicv_error_t parallel_min_max_with_sme(
   kleidicv::thread_internal::HeapArray<ScalarType> min_values;
   kleidicv::thread_internal::HeapArray<ScalarType> max_values;
   if ((p_min_value &&
-       !min_values.allocate_and_fill(value_count,
-                                     std::numeric_limits<ScalarType>::max())) ||
+       !min_values.allocate_and_fill(
+           value_count, kleidicv::min_max_initial_minimum<ScalarType>())) ||
       (p_max_value &&
        !max_values.allocate_and_fill(
-           value_count, std::numeric_limits<ScalarType>::lowest()))) {
+           value_count, kleidicv::min_max_initial_maximum<ScalarType>()))) {
     return KLEIDICV_ERROR_ALLOCATION;
   }
 
@@ -771,11 +769,13 @@ kleidicv_error_t parallel_min_max_with_sme(
     };
   };
 
-  auto return_val = parallel_batches_with_sme(
-      make_callback(cpu_function), make_callback(sme_function), mt, height);
-  reduce_min(min_values.data(), height, p_min_value);
-  reduce_max(max_values.data(), height, p_max_value);
-  return return_val;
+  if (kleidicv_error_t err =
+          parallel_batches_with_sme(make_callback(cpu_function),
+                                    make_callback(sme_function), mt, height)) {
+    return err;
+  }
+  return reduce_min_max(cpu_function, min_values.data(), max_values.data(),
+                        height, p_min_value, p_max_value);
 }
 #endif  // KLEIDICV_ENABLE_SME_THREAD_DISPATCH
 

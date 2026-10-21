@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <tuple>
@@ -59,6 +60,22 @@ class AllocationFailureMock {
 };
 
 namespace test {
+
+// Preserve the representation, including signed zero and NaN payload bits.
+inline uint32_t float_to_bits(const float &value) {
+  uint32_t bits{};
+  static_assert(sizeof(bits) == sizeof(value));
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+// Creates a float without changing signed zero or NaN payload bits.
+inline float bits_to_float(uint32_t bits) {
+  float value{};
+  static_assert(sizeof(value) == sizeof(bits));
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
 
 class Options {
  public:

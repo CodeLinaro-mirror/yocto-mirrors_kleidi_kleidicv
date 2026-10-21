@@ -17,10 +17,10 @@ class MinMax final : public UnrollTwice {
   using VectorType = typename VecTraits::VectorType;
 
   MinMax()
-      : vmin_(vdupq_n(std::numeric_limits<ScalarType>::max())),
-        vmax_(vdupq_n(std::numeric_limits<ScalarType>::lowest())),
-        min_(std::numeric_limits<ScalarType>::max()),
-        max_(std::numeric_limits<ScalarType>::lowest()) {}
+      : vmin_(vdupq_n(min_max_initial_minimum<ScalarType>())),
+        vmax_(vdupq_n(min_max_initial_maximum<ScalarType>())),
+        min_(min_max_initial_minimum<ScalarType>()),
+        max_(min_max_initial_maximum<ScalarType>()) {}
 
   void vector_path(VectorType src) {
     vmin_ = vminq(vmin_, src);
@@ -28,16 +28,29 @@ class MinMax final : public UnrollTwice {
   }
 
   void scalar_path(ScalarType src) {
-    min_ = std::min(min_, src);
-    max_ = std::max(max_, src);
+    if constexpr (std::is_same_v<ScalarType, float>) {
+      // Use the same NaN, signed-zero and FPCR.FZ behavior as the vector path.
+      vector_path(vdupq_n(src));
+    } else {
+      min_ = std::min(min_, src);
+      max_ = std::max(max_, src);
+    }
   }
 
   ScalarType get_min() const {
-    return std::min<ScalarType>(min_, vminvq(vmin_));
+    if constexpr (std::is_same_v<ScalarType, float>) {
+      return min_max_canonicalize_nan(vminvq(vmin_));
+    } else {
+      return std::min<ScalarType>(min_, vminvq(vmin_));
+    }
   }
 
   ScalarType get_max() const {
-    return std::max<ScalarType>(max_, vmaxvq(vmax_));
+    if constexpr (std::is_same_v<ScalarType, float>) {
+      return min_max_canonicalize_nan(vmaxvq(vmax_));
+    } else {
+      return std::max<ScalarType>(max_, vmaxvq(vmax_));
+    }
   }
 
  private:
