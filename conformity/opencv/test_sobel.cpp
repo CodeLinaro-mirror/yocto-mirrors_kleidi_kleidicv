@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <vector>
 
+#include "empty_input.h"
 #include "tests.h"
 
 template <bool Vertical>
@@ -43,9 +44,17 @@ bool test_sobel(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_sobel(const cv::Mat& input, cv::Mat& output) {
+  cv::Sobel(input, output, CV_16S, 1, 0, 3, 1.0, 0.0, cv::BORDER_REPLICATE);
+}
+
 std::vector<test>& sobel_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("sobel", CV_8UC1, exec_empty_input<empty_sobel>),
+      EMPTY_INPUT_TEST("sobel", CV_8UC3, exec_empty_input<empty_sobel>),
+      EMPTY_INPUT_TEST("sobel", CV_8UC4, exec_empty_input<empty_sobel>),
+
     TEST("Sobel Vertical, 1 channel", (test_sobel<true, 1>), exec_sobel<true>),
     TEST("Sobel Vertical, 2 channel", (test_sobel<true, 2>), exec_sobel<true>),
     TEST("Sobel Vertical, 3 channel", (test_sobel<true, 3>), exec_sobel<true>),

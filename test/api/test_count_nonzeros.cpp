@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -135,11 +135,11 @@ TYPED_TEST(CountNonZeros, Misalignment) {
 TYPED_TEST(CountNonZeros, ZeroImageSize) {
   TypeParam src[1] = {};
   size_t count = 123;
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             count_nonzeros<TypeParam>()(src, sizeof(TypeParam), 0, 1, &count));
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             count_nonzeros<TypeParam>()(src, sizeof(TypeParam), 1, 0, &count));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(123, count);
 }
 
 TYPED_TEST(CountNonZeros, OversizeImage) {

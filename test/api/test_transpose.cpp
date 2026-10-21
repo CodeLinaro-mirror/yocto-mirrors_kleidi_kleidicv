@@ -284,10 +284,12 @@ TEST_P(Transpose, ZeroImageSize) {
   const size_t element_size = GetParam();
   for (auto function : {kleidicv_transpose, kleidicv_transpose_sme}) {
     for (size_t extent : {size_t{1}, size_t{128}}) {
-      EXPECT_EQ(KLEIDICV_OK, function(src.data(), element_size, dst.data(),
-                                      element_size, 0, extent, element_size));
-      EXPECT_EQ(KLEIDICV_OK, function(src.data(), element_size, dst.data(),
-                                      element_size, extent, 0, element_size));
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                function(src.data(), element_size, dst.data(), element_size, 0,
+                         extent, element_size));
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                function(src.data(), element_size, dst.data(), element_size,
+                         extent, 0, element_size));
     }
     EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
               function(nullptr, element_size, dst.data(), element_size, 0, 0,
@@ -333,3 +335,19 @@ TEST(TransposeValidation, ErrorPrecedence) {
 }
 
 }  // namespace
+
+TEST(TransposeEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto &[width, height] : {std::array<size_t, 2>{0, 0},
+                                      {0, 8},
+                                      {8, 0},
+                                      {0, SIZE_MAX},
+                                      {SIZE_MAX, 0}}) {
+    for (auto function : {kleidicv_transpose, kleidicv_transpose_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                function(src, 0, dst, 0, width, height, 1));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
+}

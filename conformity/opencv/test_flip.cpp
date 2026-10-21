@@ -5,6 +5,7 @@
 #include <limits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core.hpp"
 #include "tests.h"
 
@@ -87,8 +88,20 @@ bool test_flip_inplace(int index, RecreatedMessageQueue& request_queue,
        (test_flip_inplace<type, channels, direction_code>),                   \
        (exec_flip_inplace<direction_code>))
 
+static void empty_flip(const cv::Mat& input, cv::Mat& output) {
+  cv::flip(input, output, 1);
+}
+
 std::vector<test>& flip_tests_get() {
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("flip", CV_8UC1, exec_empty_input<empty_flip>),
+      EMPTY_INPUT_TEST("flip", CV_8UC3, exec_empty_input<empty_flip>),
+      EMPTY_INPUT_TEST("flip", CV_8UC4, exec_empty_input<empty_flip>),
+      EMPTY_INPUT_TEST("flip", CV_8SC1, exec_empty_input<empty_flip>),
+      EMPTY_INPUT_TEST("flip", CV_16UC1, exec_empty_input<empty_flip>),
+      EMPTY_INPUT_TEST("flip", CV_16SC1, exec_empty_input<empty_flip>),
+      EMPTY_INPUT_TEST("flip", CV_32FC1, exec_empty_input<empty_flip>),
+
       FLIP_TEST(uint8_t, 1, "Horizontal", 1, "U8"),
       FLIP_TEST(uint8_t, 2, "Horizontal", 1, "U8"),
       FLIP_TEST(uint8_t, 3, "Horizontal", 1, "U8"),

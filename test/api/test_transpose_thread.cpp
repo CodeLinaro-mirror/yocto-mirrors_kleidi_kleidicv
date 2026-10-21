@@ -175,7 +175,7 @@ TEST_F(ThreadTransposeValidation, RejectsCompleteRequestsBeforeScheduling) {
       KLEIDICV_ERROR_NULL_POINTER,
       kleidicv_thread_transpose(nullptr, 1, &dst, 1, 0, 0, 1, scheduler()));
   expect_rejected(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_transpose(&src, 1, &src, 1, 0, 1, 1, scheduler()));
 }
 
@@ -187,22 +187,27 @@ TEST_F(ThreadTransposeValidation, ValidRequestsReachTheScheduler) {
       2, kleidicv_thread_transpose(&src, 1, &dst, 1, 128, 1, 1, scheduler()));
 }
 
-TEST_F(ThreadTransposeValidation, EmptyOutOfPlaceRequestsBypassTheScheduler) {
+TEST_F(ThreadTransposeValidation,
+       EmptyOutOfPlaceRequestsReturnRangeBeforeScheduling) {
   uint8_t src = 0;
   uint8_t dst = 0;
 
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_transpose(&src, 1, &dst, 1, 0, 128, 1, scheduler()));
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_transpose(&src, 1, &dst, 1, 128, 0, 1, scheduler()));
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_transpose(&src, 1, &dst, 1, 0, 0, 1, scheduler()));
 }
 
-TEST_F(ThreadTransposeValidation, EmptyInPlaceBypassesTheScheduler) {
+TEST_F(ThreadTransposeValidation, EmptyInPlaceReturnsRangeBeforeScheduling) {
   uint8_t data = 0;
 
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_transpose(&data, 1, &data, 1, 0, 0, 1, scheduler()));
 }
 

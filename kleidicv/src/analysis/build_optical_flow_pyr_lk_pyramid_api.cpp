@@ -17,7 +17,6 @@ kleidicv_error_t build_optical_flow_pyr_lk_pyramid(
   CHECK_POINTERS(pyramid);
 
   CHECK_POINTER_AND_STRIDE(src, src_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
 
   size_t actual_level_count = 0;
   if (kleidicv_error_t err =

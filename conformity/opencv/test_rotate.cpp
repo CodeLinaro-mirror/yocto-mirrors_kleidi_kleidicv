@@ -5,6 +5,7 @@
 #include <limits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/imgproc.hpp"
 #include "tests.h"
 
@@ -47,8 +48,27 @@ bool test_rotate(int index, RecreatedMessageQueue& request_queue,
   TEST("Rotate " #code ", " #channels " channel (" label ")", \
        (test_rotate<cv::code, type, channels>), (exec_rotate<cv::code>))
 
+static void empty_rotate(const cv::Mat& input, cv::Mat& output) {
+  cv::rotate(input, output, cv::ROTATE_90_CLOCKWISE);
+}
+
 std::vector<test>& rotate_tests_get() {
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_8UC1,
+                       exec_empty_input<empty_rotate>),
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_8UC3,
+                       exec_empty_input<empty_rotate>),
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_8UC4,
+                       exec_empty_input<empty_rotate>),
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_8SC1,
+                       exec_empty_input<empty_rotate>),
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_16UC1,
+                       exec_empty_input<empty_rotate>),
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_16SC1,
+                       exec_empty_input<empty_rotate>),
+      EMPTY_INPUT_TEST("rotate cv::ROTATE_90_CLOCKWISE", CV_32FC1,
+                       exec_empty_input<empty_rotate>),
+
       ROTATE_TEST(ROTATE_90_CLOCKWISE, uint8_t, 1, "U8"),
       ROTATE_TEST(ROTATE_90_CLOCKWISE, uint8_t, 2, "U8"),
       ROTATE_TEST(ROTATE_90_CLOCKWISE, uint8_t, 3, "U8"),

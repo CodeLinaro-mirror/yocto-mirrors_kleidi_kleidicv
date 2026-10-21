@@ -1,8 +1,10 @@
-// SPDX-FileCopyrightText: 2023 - 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
+
+#include <array>
 
 #include "framework/array.h"
 #include "framework/utils.h"
@@ -372,4 +374,22 @@ TYPED_TEST(MinMaxLoc, OversizeImage) {
             min_max_loc<TypeParam>()(
                 src, sizeof(TypeParam), KLEIDICV_MAX_IMAGE_PIXELS,
                 KLEIDICV_MAX_IMAGE_PIXELS, &min_offset, &max_offset));
+}
+
+TEST(MinMaxEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t minimum = 123;
+  uint8_t maximum = 234;
+  for (const auto& [width, height] : {std::array<size_t, 2>{0, 0},
+                                      {0, 8},
+                                      {8, 0},
+                                      {0, SIZE_MAX},
+                                      {SIZE_MAX, 0}}) {
+    for (auto function : {kleidicv_min_max_u8, kleidicv_min_max_u8_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                function(src, 0, width, height, &minimum, &maximum));
+      EXPECT_EQ(123, minimum);
+      EXPECT_EQ(234, maximum);
+    }
+  }
 }

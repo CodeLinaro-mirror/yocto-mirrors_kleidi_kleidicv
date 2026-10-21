@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -44,10 +44,12 @@ TYPED_TEST(CannyTest, Misalignment) {
 
 TYPED_TEST(CannyTest, ZeroImageSize) {
   TypeParam src[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, canny<TypeParam>()(src, sizeof(TypeParam), dst,
-                                            sizeof(TypeParam), 0, 1, 0.0, 1.0));
-  EXPECT_EQ(KLEIDICV_OK, canny<TypeParam>()(src, sizeof(TypeParam), dst,
-                                            sizeof(TypeParam), 1, 0, 0.0, 1.0));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            canny<TypeParam>()(src, sizeof(TypeParam), dst, sizeof(TypeParam),
+                               0, 1, 0.0, 1.0));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            canny<TypeParam>()(src, sizeof(TypeParam), dst, sizeof(TypeParam),
+                               1, 0, 0.0, 1.0));
 }
 
 TYPED_TEST(CannyTest, OversizeImage) {

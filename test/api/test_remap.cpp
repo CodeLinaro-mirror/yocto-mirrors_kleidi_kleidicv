@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <climits>
 #include <cmath>
 #include <cstdint>
@@ -305,10 +306,10 @@ TYPED_TEST(RemapS16, ZeroImageSize) {
   TypeParam dst[1];
   int16_t mapxy[2] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             remap_s16<TypeParam>()(src, 0, 0, 1, dst, 0, 0, 1, 1, mapxy, 4,
                                    KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             remap_s16<TypeParam>()(src, 1 * sizeof(TypeParam), 1, 0, dst,
                                    1 * sizeof(TypeParam), 1, 0, 1, mapxy, 4,
                                    KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
@@ -814,12 +815,12 @@ TYPED_TEST(RemapS16Point5, ZeroImageSize) {
   int16_t mapxy[2] = {};
   uint16_t mapfrac[1] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             remap_s16point5<TypeParam>()(
                 src, 0, 0, 1, dst, 0, 0, 1, 1, mapxy, 4, mapfrac, 2,
                 KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       remap_s16point5<TypeParam>()(
           src, 1 * sizeof(TypeParam), 1, 0, dst, 1 * sizeof(TypeParam), 1, 0, 1,
           mapxy, 4, mapfrac, 2, KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
@@ -913,10 +914,11 @@ TYPED_TEST(RemapS16Point5, UnsupportedChannels) {
   uint16_t mapfrac[8] = {};
 
   for (size_t channels : {size_t{0}, size_t{2}, size_t{3}}) {
-    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
-              remap_s16point5<TypeParam>()(
-                  src, 1, 1, 1, dst, 8, 8, 1, channels, mapxy, 4, mapfrac, 2,
-                  KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(
+        channels == 0 ? KLEIDICV_ERROR_RANGE : KLEIDICV_ERROR_NOT_IMPLEMENTED,
+        remap_s16point5<TypeParam>()(src, 1, 1, 1, dst, 8, 8, 1, channels,
+                                     mapxy, 4, mapfrac, 2,
+                                     KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
   }
 }
 
@@ -1387,19 +1389,19 @@ TYPED_TEST(RemapF32, ZeroHeightImage) {
 
   // TODO: Why these sets of parameters?
   for (auto [border_type, border_value] : get_borders<TypeParam>()) {
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               remap_f32<TypeParam>()(src, src_stride, kW, 1, dst, dst_stride,
                                      kW, 0, 1, mapx, mapx_stride, mapy,
                                      mapy_stride, KLEIDICV_INTERPOLATION_LINEAR,
                                      border_type, border_value));
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               remap_f32<TypeParam>()(src, big_stride, kW, 2, dst, dst_stride,
                                      kW, 0, 1, mapx, mapx_stride, mapy,
                                      mapy_stride, KLEIDICV_INTERPOLATION_LINEAR,
                                      border_type, border_value));
   }
   const TypeParam border_value[1] = {0};
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             remap_f32<TypeParam>()(
                 src, src_stride, kW, 0, dst, dst_stride, kW, 1, 1, mapx,
                 mapx_stride, mapy, mapy_stride, KLEIDICV_INTERPOLATION_LINEAR,
@@ -1626,3 +1628,53 @@ TEST(RemapValidation, OrdinaryChecksPrecedeCapability) {
 }
 
 }  // namespace
+
+TEST(RemapEmptyInput, RejectsInvalidChannelsWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  int16_t mapxy[] = {0, 0};
+  uint16_t mapfrac[] = {0};
+  float map[] = {0};
+  for (size_t channels :
+       {size_t{0}, size_t{KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1}, SIZE_MAX}) {
+    SCOPED_TRACE(channels);
+    EXPECT_EQ(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_remap_s16_u8(src, 0, 8, 8, dst, 0, 8, 8, channels, mapxy, 0,
+                              KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_remap_s16point5_u8(
+                  src, 0, 8, 8, dst, 0, 8, 8, channels, mapxy, 0, mapfrac, 0,
+                  KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_remap_f32_u8(src, 0, 8, 8, dst, 0, 8, 8, channels, map,
+                                    0, map, 0, KLEIDICV_INTERPOLATION_LINEAR,
+                                    KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(42, dst[0]);
+  }
+}
+
+TEST(RemapEmptyInput, RejectsEmptyDestinationsWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  int16_t mapxy[] = {0, 0};
+  uint16_t mapfrac[] = {0};
+  float map[] = {0};
+  for (const auto &[width, height] :
+       {std::array<size_t, 2>{0, 0}, {0, 8}, {8, 0}}) {
+    SCOPED_TRACE(::testing::Message() << width << 'x' << height);
+    EXPECT_EQ(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_remap_s16_u8(src, 0, 8, 8, dst, 0, width, height, 1, mapxy, 0,
+                              KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_remap_s16point5_u8(
+                  src, 0, 8, 8, dst, 0, width, height, 1, mapxy, 0, mapfrac, 0,
+                  KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_remap_f32_u8(src, 0, 8, 8, dst, 0, width, height, 1, map,
+                                    0, map, 0, KLEIDICV_INTERPOLATION_LINEAR,
+                                    KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(42, dst[0]);
+  }
+}

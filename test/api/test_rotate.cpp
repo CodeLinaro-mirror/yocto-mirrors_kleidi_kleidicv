@@ -158,10 +158,10 @@ TEST_P(Rotate, ZeroImageSize) {
   for (auto function : {kleidicv_rotate, kleidicv_rotate_sme}) {
     for (int angle : {90, -90}) {
       for (size_t extent : {size_t{1}, size_t{128}}) {
-        EXPECT_EQ(KLEIDICV_OK,
+        EXPECT_EQ(KLEIDICV_ERROR_RANGE,
                   function(src.data(), element_size, 0, extent, dst.data(),
                            element_size, angle, element_size));
-        EXPECT_EQ(KLEIDICV_OK,
+        EXPECT_EQ(KLEIDICV_ERROR_RANGE,
                   function(src.data(), element_size, extent, 0, dst.data(),
                            element_size, angle, element_size));
       }
@@ -286,3 +286,19 @@ TEST(RotateValidation, ErrorPrecedence) {
 }
 
 }  // namespace
+
+TEST(RotateEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto &[width, height] : {std::array<size_t, 2>{0, 0},
+                                      {0, 8},
+                                      {8, 0},
+                                      {0, SIZE_MAX},
+                                      {SIZE_MAX, 0}}) {
+    for (auto function : {kleidicv_rotate, kleidicv_rotate_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                function(src, 0, width, height, dst, 0, 90, 1));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
+}

@@ -29,16 +29,6 @@ inline FixedBorderTypeValidationResult blur_and_downsample_validate(
     const uint8_t *src, size_t src_stride, size_t src_width, size_t src_height,
     uint8_t *dst, size_t dst_stride, size_t channels,
     kleidicv_border_type_t border_type) {
-  if (src_width < 4 || src_height < 4 || channels < 1 ||
-      channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
-    return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
-  }
-
-  auto fixed_border_type = get_fixed_border_type(border_type);
-  if (!fixed_border_type) {
-    return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
-  }
-
   if (kleidicv_error_t check_error =
           KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
                                                               src_height)) {
@@ -52,8 +42,18 @@ inline FixedBorderTypeValidationResult blur_and_downsample_validate(
   }
 
   if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_image_size(src_width, src_height)) {
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(src_width, src_height,
+                                                      channels)) {
     return {check_error, FixedBorderType{}};
+  }
+
+  if (src_width < 4 || src_height < 4) {
+    return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
+  }
+
+  auto fixed_border_type = get_fixed_border_type(border_type);
+  if (!fixed_border_type) {
+    return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
   }
 
   return {KLEIDICV_OK, *fixed_border_type};

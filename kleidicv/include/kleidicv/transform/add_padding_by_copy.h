@@ -17,8 +17,7 @@
 
 namespace kleidicv {
 inline bool add_padding_by_copy_is_implemented(
-    size_t src_width, size_t src_height, size_t pixel_size,
-    kleidicv_border_type_t border_type) KLEIDICV_STREAMING {
+    size_t pixel_size, kleidicv_border_type_t border_type) KLEIDICV_STREAMING {
   constexpr size_t kMaxPixelSize =
       static_cast<size_t>(KLEIDICV_MAXIMUM_TYPE_SIZE) *
       KLEIDICV_MAXIMUM_CHANNEL_COUNT;
@@ -32,11 +31,6 @@ inline bool add_padding_by_copy_is_implemented(
       border_type != KLEIDICV_BORDER_TYPE_REFLECT &&
       border_type != KLEIDICV_BORDER_TYPE_WRAP &&
       border_type != KLEIDICV_BORDER_TYPE_REVERSE) {
-    return false;
-  }
-
-  if (border_type != KLEIDICV_BORDER_TYPE_CONSTANT &&
-      (src_width == 0 || src_height == 0)) {
     return false;
   }
 
@@ -86,8 +80,7 @@ inline AddPaddingByCopyChecksResult add_padding_by_copy_checks(
     const void *border_value) KLEIDICV_STREAMING {
   CHECK_IMAGE_SIZE(src_width, src_height);
 
-  if (!add_padding_by_copy_is_implemented(src_width, src_height, pixel_size,
-                                          border_type)) {
+  if (!add_padding_by_copy_is_implemented(pixel_size, border_type)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 
@@ -102,8 +95,7 @@ inline AddPaddingByCopyChecksResult add_padding_by_copy_checks(
   }
 
   constexpr size_t kMaxImageDimension = KLEIDICV_MAX_IMAGE_PIXELS;
-  if (src_width > kMaxImageDimension || src_height > kMaxImageDimension ||
-      top_padding > kMaxImageDimension || bottom_padding > kMaxImageDimension ||
+  if (top_padding > kMaxImageDimension || bottom_padding > kMaxImageDimension ||
       left_padding > kMaxImageDimension || right_padding > kMaxImageDimension) {
     return KLEIDICV_ERROR_RANGE;
   }

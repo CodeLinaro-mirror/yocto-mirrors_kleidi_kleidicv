@@ -235,11 +235,11 @@ TYPED_TEST(BlurAndDownsample, ErrorPrecedence) {
   TypeParam dst[1] = {};
 
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_NULL_POINTER,
       blur_and_downsample<TypeParam>()(
           nullptr, sizeof(TypeParam), kMinWidthHeight - 1, kMinWidthHeight, dst,
           sizeof(TypeParam), 1, KLEIDICV_BORDER_TYPE_REPLICATE));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
             blur_and_downsample<TypeParam>()(
                 nullptr, sizeof(TypeParam), kMinWidthHeight, kMinWidthHeight,
                 dst, sizeof(TypeParam), 1, KLEIDICV_BORDER_TYPE_TRANSPARENT));
@@ -299,12 +299,12 @@ TYPED_TEST(BlurAndDownsample, OversizeImage) {
 
 TYPED_TEST(BlurAndDownsample, ChannelNumber) {
   TypeParam src[1] = {}, dst[1] = {};
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             blur_and_downsample<TypeParam>()(
                 src, sizeof(TypeParam), kMinWidthHeight, kMinWidthHeight, dst,
                 sizeof(TypeParam), 5, KLEIDICV_BORDER_TYPE_REFLECT));
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             blur_and_downsample<TypeParam>()(
                 src, sizeof(TypeParam), kMinWidthHeight, kMinWidthHeight, dst,
                 sizeof(TypeParam), 0, KLEIDICV_BORDER_TYPE_REFLECT));
@@ -368,3 +368,29 @@ TEST(FilterStripeWorkers, BlurAndDownsampleHonorsSourceRowRange) {
 }
 
 }  // namespace
+
+TEST(BlurAndDownsampleEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto &[width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    SCOPED_TRACE(::testing::Message()
+                 << width << 'x' << height << ", channels=" << channels);
+    for (bool use_sme : {false, true}) {
+      SCOPED_TRACE(use_sme);
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                (use_sme ? kleidicv_blur_and_downsample_u8_sme
+                         : kleidicv_blur_and_downsample_u8)(
+                    src, 0, width, height, dst, 0, channels,
+                    KLEIDICV_BORDER_TYPE_REPLICATE));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
+}

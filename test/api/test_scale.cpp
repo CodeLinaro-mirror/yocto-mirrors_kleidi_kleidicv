@@ -709,10 +709,10 @@ TYPED_TEST(ScaleTest, ZeroImageSize) {
   using OutputType = typename TypeParam::OutputType;
   InputType src[1] = {};
   OutputType dst[1];
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             (scale_api<InputType, OutputType>()(
                 src, sizeof(InputType), dst, sizeof(OutputType), 0, 1, 2, 0)));
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             (scale_api<InputType, OutputType>()(
                 src, sizeof(InputType), dst, sizeof(OutputType), 1, 0, 2, 0)));
 }

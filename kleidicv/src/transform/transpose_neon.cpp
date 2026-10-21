@@ -222,10 +222,6 @@ kleidicv_error_t transpose(const void *src, size_t src_stride, void *dst,
                              src_height, pixel_size)) {
     return err;
   }
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
-
   switch (pixel_size) {
     case sizeof(uint8_t):
       return transpose<uint8_t>(src, src_stride, dst, dst_stride, src_width,

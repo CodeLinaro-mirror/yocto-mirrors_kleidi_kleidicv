@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/imgproc/hal/interface.h"
 #include "utils.h"
@@ -273,9 +274,18 @@ bool test_resize_to_third(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_resize(const cv::Mat& input, cv::Mat& output) {
+  cv::resize(input, output, cv::Size(4, 4));
+}
+
 std::vector<test>& resize_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("resize", CV_8UC1, exec_empty_input<empty_resize>),
+      EMPTY_INPUT_TEST("resize", CV_8UC3, exec_empty_input<empty_resize>),
+      EMPTY_INPUT_TEST("resize", CV_8UC4, exec_empty_input<empty_resize>),
+      EMPTY_INPUT_TEST("resize", CV_32FC1, exec_empty_input<empty_resize>),
+
     TEST("Resize2x2 float32, INTER_LINEAR", (test_resize<2000, CV_HAL_INTER_LINEAR, 5, 16, CV_32FC1>), (exec_resize<2000, CV_HAL_INTER_LINEAR>)),
     TEST("Resize4x4 float32, INTER_LINEAR", (test_resize<4000, CV_HAL_INTER_LINEAR, 5, 16, CV_32FC1>), (exec_resize<4000, CV_HAL_INTER_LINEAR>)),
     TEST("Resize8x8 float32, INTER_LINEAR", (test_resize<8000, CV_HAL_INTER_LINEAR, 5, 16, CV_32FC1>), (exec_resize<8000, CV_HAL_INTER_LINEAR>)),

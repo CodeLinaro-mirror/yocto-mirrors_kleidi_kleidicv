@@ -48,6 +48,12 @@
 ///   `KLEIDICV_LIMIT_SME2_TO_SELECTED_ALGORITHMS` CMake variable to `OFF`,
 ///   in which case SME2 is always used when available.
 ///
+/// Source and destination image dimensions must be nonzero. Explicit channel
+/// counts must be in `[1, KLEIDICV_MAXIMUM_CHANNEL_COUNT]`. For otherwise valid
+/// arguments, invalid dimensions or channel counts return
+/// @ref KLEIDICV_ERROR_RANGE before image processing begins;
+/// image buffers and reduction outputs remain unchanged.
+///
 /// Unless stated otherwise, in-place operations are not supported.
 
 /// @defgroup kleidicv_api KleidiCV C API
@@ -453,8 +459,8 @@ kleidicv_error_t kleidicv_optical_flow_pyr_lk_u8_from_pyramid_sme(
 /// `next_points` are used as initial guesses. Otherwise, `prev_points` are used
 /// as initial guesses.
 ///
-/// If `point_count` is 0, the function returns success without accessing point
-/// arrays.
+/// If `point_count` is 0 and image dimensions and channels are valid, the
+/// function returns success without accessing point arrays.
 ///
 /// @param prev_img         Pointer to previous image data. Must be non-null.
 /// @param prev_img_stride  Distance in bytes between previous-image rows. Must

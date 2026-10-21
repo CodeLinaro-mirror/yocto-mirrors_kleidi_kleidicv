@@ -23,10 +23,6 @@ kleidicv_error_t flip(const void *src, size_t src_stride, size_t width,
   if (error != KLEIDICV_OK) {
     return error;
   }
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const size_t work_item_count =
       kleidicv::flip_work_item_count(height, src == dst, flip_mode);
   return WorkItemFlipFunction(src, src_stride, width, height, dst, dst_stride,

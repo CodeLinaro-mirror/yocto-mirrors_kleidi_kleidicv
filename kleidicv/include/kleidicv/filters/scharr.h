@@ -31,14 +31,13 @@ namespace kleidicv {
 inline kleidicv_error_t scharr_interleaved_validate(
     const uint8_t *src, size_t src_stride, size_t src_width, size_t src_height,
     size_t src_channels, int16_t *dst, size_t dst_stride) {
-  if (src_width <= 2 || src_height <= 2 || src_channels < 1 ||
-      src_channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
-  }
-
   CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, src_height);
-  CHECK_IMAGE_SIZE(src_width, src_height);
+  CHECK_IMAGE_SIZE(src_width, src_height, src_channels);
+
+  if (src_width <= 2 || src_height <= 2) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
 
   return KLEIDICV_OK;
 }

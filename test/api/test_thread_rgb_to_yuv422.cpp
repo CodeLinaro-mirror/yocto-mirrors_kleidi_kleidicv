@@ -53,7 +53,7 @@ class Rgb2Yuv422Thread : public testing::TestWithParam<P> {
     test::Array2D<uint8_t> src{60, 10, 0, 3};
     test::Array2D<uint8_t> dst{40, 10};
 
-    // Zero-sized images should be OK (no-op).
+    // Nonzero widths below a complete pixel pair are unsupported.
     EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 1, 1,
                    color_format, get_multithreading_fake(2)));
@@ -62,7 +62,7 @@ class Rgb2Yuv422Thread : public testing::TestWithParam<P> {
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 5, 1,
                    color_format, get_multithreading_fake(2)));
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 2, 0,
                    color_format, get_multithreading_fake(2)));
 
@@ -158,8 +158,9 @@ TEST_F(ThreadRgbToYuv422Validation, ChecksPrecedeScheduling) {
       KLEIDICV_ERROR_NOT_IMPLEMENTED,
       kleidicv_thread_rgb_to_yuv_u8(&src, 1, &dst, 1, 1, 1,
                                     KLEIDICV_RGB_TO_YUYV, scheduler()));
-  expect_no_work(kleidicv_thread_rgb_to_yuv_u8(
-      &src, 1, &dst, 1, 2, 0, KLEIDICV_RGB_TO_YUYV, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_rgb_to_yuv_u8(
+                                            &src, 1, &dst, 1, 2, 0,
+                                            KLEIDICV_RGB_TO_YUYV, scheduler()));
 }
 
 }  // namespace

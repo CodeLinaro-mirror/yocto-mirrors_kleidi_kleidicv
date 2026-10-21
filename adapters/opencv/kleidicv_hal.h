@@ -625,19 +625,32 @@ static inline int kleidicv_compare_u8_with_fallback(
 #define cv_hal_absdiff16s(...) KLEIDICV_HAL_FORWARD(kleidicv_saturating_absdiff_s16, __VA_ARGS__)
 #undef cv_hal_absdiff16u
 #define cv_hal_absdiff16u(...) KLEIDICV_HAL_FORWARD(kleidicv_saturating_absdiff_u16, __VA_ARGS__)
-
-#undef cv_hal_and8u
-#define cv_hal_and8u(...) KLEIDICV_HAL_FORWARD(kleidicv_bitwise_and, __VA_ARGS__)
 // clang-format on
+
+static inline int kleidicv_bitwise_and_hal(
+    const uchar *src_a, size_t src_a_stride, const uchar *src_b,
+    size_t src_b_stride, uchar *dst, size_t dst_stride, int width, int height) {
+  // OpenCV's bitwise_and forwards empty images to HAL without an early return.
+  if (width == 0 || height == 0) {
+    return CV_HAL_ERROR_OK;
+  }
+  return KLEIDICV_HAL_FORWARD(kleidicv_bitwise_and, src_a, src_a_stride, src_b,
+                              src_b_stride, dst, dst_stride, width, height);
+}
+#undef cv_hal_and8u
+#define cv_hal_and8u kleidicv_bitwise_and_hal
 
 #define KLEIDICV_HAL_MUL(suffix, kleidicv_impl, T)                            \
   static inline int kleidicv_##suffix##_with_fallback(                        \
       const T *src_a, size_t src_a_stride, const T *src_b,                    \
-      size_t src_b_stride, T *dst, size_t dst_stride, size_t width,           \
-      size_t height, double scale) {                                          \
+      size_t src_b_stride, T *dst, size_t dst_stride, int width, int height,  \
+      double scale) {                                                         \
     if (scale != 1.0) {                                                       \
       return cv_hal_##suffix(src_a, src_a_stride, src_b, src_b_stride, dst,   \
                              dst_stride, width, height, scale);               \
+    }                                                                         \
+    if (width == 0 || height == 0) {                                          \
+      return CV_HAL_ERROR_OK;                                                 \
     }                                                                         \
     return KLEIDICV_HAL_FORWARD(kleidicv_impl, src_a, src_a_stride, src_b,    \
                                 src_b_stride, dst, dst_stride, width, height, \

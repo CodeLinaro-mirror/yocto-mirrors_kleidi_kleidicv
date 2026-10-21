@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "framework/array.h"
@@ -577,11 +578,22 @@ TEST_F(AddPaddingByCopyTest, MatchesReferenceAtMaximumPixelSize) {
                       KLEIDICV_BORDER_TYPE_REFLECT});
 }
 
-TEST_F(AddPaddingByCopyTest, AllowsZeroSizedConstantImages) {
-  run_reference_test(
-      {0, 3, 2, 1, 4, 3, 3, 0, 5, KLEIDICV_BORDER_TYPE_CONSTANT});
-  run_reference_test(
-      {4, 0, 2, 3, 1, 2, 4, 0, 3, KLEIDICV_BORDER_TYPE_CONSTANT});
+TEST_F(AddPaddingByCopyTest, RejectsZeroSizedConstantImages) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  const auto border = border_value();
+  for (const auto& [width, height] :
+       {std::pair<size_t, size_t>{0, 0},
+        {0, 3},
+        {4, 0},
+        {0, std::numeric_limits<size_t>::max()},
+        {std::numeric_limits<size_t>::max(), 0}}) {
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_add_padding_by_copy(
+                  src, 0, dst, 0, width, height, 2, 3, 4, 5, 1,
+                  KLEIDICV_BORDER_TYPE_CONSTANT, border.data()));
+    EXPECT_EQ(42, dst[0]);
+  }
 }
 
 TEST_F(AddPaddingByCopyTest, ReturnsErrorForInvalidArguments) {
@@ -614,12 +626,12 @@ TEST_F(AddPaddingByCopyTest, ReturnsErrorForInvalidArguments) {
                 src.data(), src.stride(), dst.data(), dst.stride(), 4, 4, 1, 2,
                 1, 2, 1, KLEIDICV_BORDER_TYPE_TRANSPARENT, border.data()));
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_add_padding_by_copy(
                 src.data(), src.stride(), dst.data(), dst.stride(), 0, 4, 1, 2,
                 1, 2, 1, KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_add_padding_by_copy(src.data(), src.stride(), dst.data(),
                                          dst.stride(), 4, 0, 1, 2, 1, 2, 1,
                                          KLEIDICV_BORDER_TYPE_WRAP, nullptr));

@@ -17,6 +17,11 @@
 /// @ref kleidicv_thread_multithreading argument that supplies the caller's
 /// threading backend.
 ///
+/// Zero source or destination dimensions, or explicit channel counts outside
+/// `[1, KLEIDICV_MAXIMUM_CHANNEL_COUNT]`, are rejected before invoking the
+/// scheduler. Otherwise valid calls return @ref KLEIDICV_ERROR_RANGE and
+/// leave outputs unchanged.
+///
 /// KleidiCV does not create worker threads or own a global thread pool. The
 /// caller is responsible for providing a scheduler function that executes the
 /// task ranges requested by KleidiCV on the caller's preferred threading

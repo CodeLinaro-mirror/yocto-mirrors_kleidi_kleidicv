@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -199,8 +199,8 @@ TYPED_TEST(Split, OneChannelOutOfRange) {
   test_not_implemented<TypeParam, 1>(KLEIDICV_ERROR_RANGE);
 }
 
-TYPED_TEST(Split, FiveChannelsNotImplemented) {
-  test_not_implemented<TypeParam, 5>();
+TYPED_TEST(Split, FiveChannelsOutOfRange) {
+  test_not_implemented<TypeParam, 5>(KLEIDICV_ERROR_RANGE);
 }
 
 TEST(Split128, NotImplemented) { test_not_implemented<__uint128_t, 2>(); }
@@ -293,10 +293,12 @@ TYPED_TEST(Split, ZeroImageSize) {
   void* dsts[kChannels] = {dst1, dst2};
   size_t dst_strides[kChannels] = {sizeof(TypeParam), sizeof(TypeParam)};
 
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_split(src, src_stride, dsts, dst_strides, 0,
-                                        1, kChannels, sizeof(TypeParam)));
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_split(src, src_stride, dsts, dst_strides, 1,
-                                        0, kChannels, sizeof(TypeParam)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            kleidicv_split(src, src_stride, dsts, dst_strides, 0, 1, kChannels,
+                           sizeof(TypeParam)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            kleidicv_split(src, src_stride, dsts, dst_strides, 1, 0, kChannels,
+                           sizeof(TypeParam)));
 }
 
 TYPED_TEST(Split, OversizeImage) {

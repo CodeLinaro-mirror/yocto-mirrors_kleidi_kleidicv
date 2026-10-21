@@ -36,6 +36,7 @@ std::vector<test>& flip_tests_get();
 std::vector<test>& rotate_tests_get();
 std::vector<test>& transpose_tests_get();
 std::vector<test>& add_padding_by_copy_tests_get();
+std::vector<test>& threshold_tests_get();
 
 #if MANAGER
 std::vector<manager_only_test>& add_padding_by_copy_manager_only_tests_get();

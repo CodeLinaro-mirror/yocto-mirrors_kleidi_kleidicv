@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "tests.h"
 
@@ -83,8 +84,90 @@ static bool test_binary_op(int index, RecreatedMessageQueue& request_queue,
 #define BINARY_OP_TEST(op, format, t) \
   TEST(#op " " #format, (test_binary_op<t, op, format>), exec_binary_op<op>)
 
+static void empty_add(const cv::Mat& input, cv::Mat& output) {
+  cv::add(input, input, output);
+}
+
+static void empty_add_one_empty(const cv::Mat& input, cv::Mat& output) {
+  cv::add(input, cv::Mat(4, 4, input.type(), cv::Scalar::all(1)), output);
+}
+
+static void empty_subtract(const cv::Mat& input, cv::Mat& output) {
+  cv::subtract(input, input, output);
+}
+
+static void empty_multiply(const cv::Mat& input, cv::Mat& output) {
+  cv::multiply(input, input, output);
+}
+
+static void empty_absdiff(const cv::Mat& input, cv::Mat& output) {
+  cv::absdiff(input, input, output);
+}
+
+static void empty_bitwise_and(const cv::Mat& input, cv::Mat& output) {
+  cv::bitwise_and(input, input, output);
+}
+
+static void empty_compare(const cv::Mat& input, cv::Mat& output) {
+  cv::compare(input, input, output, cv::CMP_EQ);
+}
+
 std::vector<test>& binary_op_tests_get() {
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("add", CV_8UC1, exec_empty_input<empty_add>),
+      EMPTY_INPUT_TEST("add", CV_8UC3, exec_empty_input<empty_add>),
+      EMPTY_INPUT_TEST("add", CV_8UC4, exec_empty_input<empty_add>),
+      EMPTY_INPUT_TEST("add", CV_8SC1, exec_empty_input<empty_add>),
+      EMPTY_INPUT_TEST("add", CV_16UC1, exec_empty_input<empty_add>),
+      EMPTY_INPUT_TEST("add", CV_16SC1, exec_empty_input<empty_add>),
+      EMPTY_INPUT_TEST("add_one_empty", CV_8UC1,
+                       exec_empty_input<empty_add_one_empty>),
+      EMPTY_INPUT_TEST("add_one_empty", CV_8UC3,
+                       exec_empty_input<empty_add_one_empty>),
+      EMPTY_INPUT_TEST("add_one_empty", CV_8UC4,
+                       exec_empty_input<empty_add_one_empty>),
+      EMPTY_INPUT_TEST("add_one_empty", CV_8SC1,
+                       exec_empty_input<empty_add_one_empty>),
+      EMPTY_INPUT_TEST("add_one_empty", CV_16UC1,
+                       exec_empty_input<empty_add_one_empty>),
+      EMPTY_INPUT_TEST("add_one_empty", CV_16SC1,
+                       exec_empty_input<empty_add_one_empty>),
+      EMPTY_INPUT_TEST("subtract", CV_8UC1, exec_empty_input<empty_subtract>),
+      EMPTY_INPUT_TEST("subtract", CV_8UC3, exec_empty_input<empty_subtract>),
+      EMPTY_INPUT_TEST("subtract", CV_8UC4, exec_empty_input<empty_subtract>),
+      EMPTY_INPUT_TEST("subtract", CV_8SC1, exec_empty_input<empty_subtract>),
+      EMPTY_INPUT_TEST("subtract", CV_16UC1, exec_empty_input<empty_subtract>),
+      EMPTY_INPUT_TEST("subtract", CV_16SC1, exec_empty_input<empty_subtract>),
+      EMPTY_INPUT_TEST("multiply", CV_8UC1, exec_empty_input<empty_multiply>),
+      EMPTY_INPUT_TEST("multiply", CV_8UC3, exec_empty_input<empty_multiply>),
+      EMPTY_INPUT_TEST("multiply", CV_8UC4, exec_empty_input<empty_multiply>),
+      EMPTY_INPUT_TEST("multiply", CV_8SC1, exec_empty_input<empty_multiply>),
+      EMPTY_INPUT_TEST("multiply", CV_16UC1, exec_empty_input<empty_multiply>),
+      EMPTY_INPUT_TEST("multiply", CV_16SC1, exec_empty_input<empty_multiply>),
+      EMPTY_INPUT_TEST("absdiff", CV_8UC1, exec_empty_input<empty_absdiff>),
+      EMPTY_INPUT_TEST("absdiff", CV_8UC3, exec_empty_input<empty_absdiff>),
+      EMPTY_INPUT_TEST("absdiff", CV_8UC4, exec_empty_input<empty_absdiff>),
+      EMPTY_INPUT_TEST("absdiff", CV_8SC1, exec_empty_input<empty_absdiff>),
+      EMPTY_INPUT_TEST("absdiff", CV_16UC1, exec_empty_input<empty_absdiff>),
+      EMPTY_INPUT_TEST("absdiff", CV_16SC1, exec_empty_input<empty_absdiff>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_8UC1,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_8UC3,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_8UC4,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_8SC1,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_16UC1,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_16SC1,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("bitwise_and", CV_32FC1,
+                       exec_empty_input<empty_bitwise_and>),
+      EMPTY_INPUT_TEST("compare", CV_8UC1, exec_empty_input<empty_compare>),
+      EMPTY_INPUT_TEST("compare", CV_8UC3, exec_empty_input<empty_compare>),
+      EMPTY_INPUT_TEST("compare", CV_8UC4, exec_empty_input<empty_compare>),
+
       BINARY_OP_TEST(add, CV_8SC1, int8_t),
       BINARY_OP_TEST(add, CV_32SC1, int32_t),
       BINARY_OP_TEST(sub, CV_8UC2, uint8_t),

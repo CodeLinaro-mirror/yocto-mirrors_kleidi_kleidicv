@@ -17,10 +17,6 @@ inline kleidicv_error_t min_max_validate(const T *src, size_t src_stride,
   CHECK_POINTER_AND_STRIDE(src, src_stride, height);
   CHECK_IMAGE_SIZE(width, height);
 
-  if (KLEIDICV_UNLIKELY(width == 0 || height == 0)) {
-    return KLEIDICV_ERROR_RANGE;
-  }
-
   return KLEIDICV_OK;
 }
 

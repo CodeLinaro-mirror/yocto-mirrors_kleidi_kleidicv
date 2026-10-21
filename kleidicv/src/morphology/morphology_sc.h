@@ -624,15 +624,14 @@ static kleidicv_error_t dilate_sc(
     const uint8_t *border_value, size_t iterations) KLEIDICV_STREAMING {
   CHECK_POINTER_AND_STRIDE(src, src_stride, height);
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  CHECK_IMAGE_SIZE(width, height, channels);
   CHECK_IMAGE_SIZE(kernel_width, kernel_height);
   auto morphology_border_type =
       MorphologyWorkspace::get_border_type(border_type);
   if (!morphology_border_type) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-  if (!morphology_is_implemented(width, height, kernel_width, kernel_height,
-                                 channels)) {
+  if (!morphology_is_implemented(width, height, kernel_width, kernel_height)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 
@@ -696,15 +695,14 @@ static kleidicv_error_t erode_sc(
     const uint8_t *border_value, size_t iterations) KLEIDICV_STREAMING {
   CHECK_POINTER_AND_STRIDE(src, src_stride, height);
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  CHECK_IMAGE_SIZE(width, height, channels);
   CHECK_IMAGE_SIZE(kernel_width, kernel_height);
   auto morphology_border_type =
       MorphologyWorkspace::get_border_type(border_type);
   if (!morphology_border_type) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
-  if (!morphology_is_implemented(width, height, kernel_width, kernel_height,
-                                 channels)) {
+  if (!morphology_is_implemented(width, height, kernel_width, kernel_height)) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 

@@ -320,6 +320,12 @@ int yuv_to_bgr_sp_ex(const uchar *y_data, size_t y_step, const uchar *uv_data,
                      size_t uv_step, uchar *dst_data, size_t dst_step,
                      int dst_width, int dst_height, int dcn, bool swapBlue,
                      int uIdx) {
+  // cvtColorTwoPlane validates the conversion and plane sizes, then reaches
+  // HAL even when the planes are empty and their data pointers are null.
+  if (dst_width == 0 || dst_height == 0) {
+    return CV_HAL_ERROR_OK;
+  }
+
   const bool is_nv21 = (uIdx != 0);
   auto mt = get_multithreading();
   const kleidicv_color_conversion_t color_format = make_color_conversion_type(
@@ -1119,7 +1125,7 @@ int sum(const uchar *src_data, size_t src_step, int src_type, int width,
 int flip(int src_type, const uchar *src_data, size_t src_step, int src_width,
          int src_height, uchar *dst_data, size_t dst_step, int flip_mode) {
   if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
+    return CV_HAL_ERROR_OK;
   }
 
   // Pixel sizes supported (in bytes): 1, 2, 3, 4, 6 or 8

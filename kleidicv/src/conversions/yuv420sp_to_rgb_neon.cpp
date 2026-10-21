@@ -111,10 +111,6 @@ kleidicv_error_t yuv420sp_to_rgb_u8(const uint8_t *src_y, size_t src_y_stride,
                                     uint8_t *dst, size_t dst_stride,
                                     size_t width, size_t height,
                                     kleidicv_color_conversion_t color_format) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (kleidicv_error_t err = yuv420sp_to_rgb_validate(src_y, src_uv, dst, width,
                                                       height, color_format)) {
     return err;

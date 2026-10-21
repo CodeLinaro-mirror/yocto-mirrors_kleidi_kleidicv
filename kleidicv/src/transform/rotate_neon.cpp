@@ -120,10 +120,6 @@ kleidicv_error_t rotate(const void *src, size_t src_stride, size_t src_width,
                           dst_stride, angle, pixel_size)) {
     return err;
   }
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
-
   switch (pixel_size) {
     case sizeof(uint8_t):
       return rotate<uint8_t>(src, src_stride, src_width, src_height, dst,

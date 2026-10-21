@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "tests.h"
 
@@ -49,9 +50,24 @@ bool test_morphology(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_dilate(const cv::Mat& input, cv::Mat& output) {
+  cv::dilate(input, output, cv::Mat());
+}
+
+static void empty_erode(const cv::Mat& input, cv::Mat& output) {
+  cv::erode(input, output, cv::Mat());
+}
+
 std::vector<test>& morphology_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("dilate", CV_8UC1, exec_empty_input<empty_dilate>),
+      EMPTY_INPUT_TEST("dilate", CV_8UC3, exec_empty_input<empty_dilate>),
+      EMPTY_INPUT_TEST("dilate", CV_8UC4, exec_empty_input<empty_dilate>),
+      EMPTY_INPUT_TEST("erode", CV_8UC1, exec_empty_input<empty_erode>),
+      EMPTY_INPUT_TEST("erode", CV_8UC3, exec_empty_input<empty_erode>),
+      EMPTY_INPUT_TEST("erode", CV_8UC4, exec_empty_input<empty_erode>),
+
     TEST("Dilate, default border, 1 channel", (test_morphology<false, true, 1>), (exec_morphology<false, true>)),
     TEST("Dilate, default border, 2 channel", (test_morphology<false, true, 2>), (exec_morphology<false, true>)),
     TEST("Dilate, default border, 3 channel", (test_morphology<false, true, 3>), (exec_morphology<false, true>)),

@@ -54,6 +54,24 @@ FixedBorderTypeValidationResult gaussian_blur_validate(
     const T *src, size_t src_stride, T *dst, size_t dst_stride, size_t width,
     size_t height, size_t channels, size_t kernel_width, size_t kernel_height,
     float sigma_x, float sigma_y, kleidicv_border_type_t border_type) {
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height,
+                                                      channels)) {
+    return {check_error, FixedBorderType{}};
+  }
+
   auto fixed_border_type = get_fixed_border_type(border_type);
   if (!fixed_border_type) {
     return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
@@ -79,10 +97,6 @@ FixedBorderTypeValidationResult gaussian_blur_validate(
     return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
   }
 
-  if (channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
-    return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
-  }
-
   if (kernel_width > 9 && kernel_width != 15 && kernel_width != 21) {
     if (*fixed_border_type != FixedBorderType::REPLICATE) {
       return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
@@ -96,23 +110,6 @@ FixedBorderTypeValidationResult gaussian_blur_validate(
     if (width < aligned_margin + margin) {
       return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
     }
-  }
-
-  if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
-                                                              height)) {
-    return {check_error, FixedBorderType{}};
-  }
-
-  if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
-                                                              height)) {
-    return {check_error, FixedBorderType{}};
-  }
-
-  if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) {
-    return {check_error, FixedBorderType{}};
   }
 
   return {KLEIDICV_OK, *fixed_border_type};

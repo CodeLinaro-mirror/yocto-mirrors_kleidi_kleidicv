@@ -183,8 +183,8 @@ TEST(ResizeToQuarter, ZeroImageSize) {
   const uint8_t src[1] = {};
   uint8_t dst[1];
 
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_resize_linear_u8(src, 1, 0, 1, dst, 1, 0, 1, 1));
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_resize_linear_u8(src, 1, 1, 0, dst, 1, 1, 0, 1));
 }

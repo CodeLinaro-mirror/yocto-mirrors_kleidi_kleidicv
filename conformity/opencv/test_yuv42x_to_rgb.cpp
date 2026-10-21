@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "empty_input.h"
 #include "tests.h"
 
 template <int Code>
@@ -82,9 +83,23 @@ bool test_yuv42x_to_rgb(int index, RecreatedMessageQueue& request_queue,
                            exec_cvtcolor_two_plane<cv::COLOR_##code>>), \
        exec_cvtcolor_two_plane<cv::COLOR_##code>)
 
+static void empty_cvt_color(const cv::Mat& input, cv::Mat& output) {
+  cv::cvtColor(input, output, cv::COLOR_YUV2BGR_NV12);
+}
+
+static void empty_cvt_color_two_plane(const cv::Mat& input, cv::Mat& output) {
+  // Construct planes separately: packed slicing requires a nonempty image.
+  const cv::Mat uv(input.rows / 2, input.cols / 2, CV_8UC2);
+  cv::cvtColorTwoPlane(input, uv, output, cv::COLOR_YUV2BGR_NV12);
+}
+
 std::vector<test>& yuv42x_to_rgb_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("cvt_color", CV_8UC1, exec_empty_input<empty_cvt_color>),
+      EMPTY_INPUT_TEST("cvt_color_two_plane", CV_8UC1,
+                       exec_empty_input<empty_cvt_color_two_plane>),
+
       CVTCOLOR_TEST(YUV2RGB_UYVY, 2),
       CVTCOLOR_TEST(YUV2BGR_UYVY, 2),
       CVTCOLOR_TEST(YUV2RGBA_UYVY, 2),

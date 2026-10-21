@@ -241,12 +241,14 @@ TYPED_TEST(SaturatingAddAbsWithThresholdTest, Misalignment) {
 
 TYPED_TEST(SaturatingAddAbsWithThresholdTest, ZeroImageSize) {
   TypeParam src[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_saturating_add_abs_with_threshold_s16(
-                             src, sizeof(TypeParam), src, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 0, 1, 1));
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_saturating_add_abs_with_threshold_s16(
-                             src, sizeof(TypeParam), src, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 1, 0, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            kleidicv_saturating_add_abs_with_threshold_s16(
+                src, sizeof(TypeParam), src, sizeof(TypeParam), dst,
+                sizeof(TypeParam), 0, 1, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            kleidicv_saturating_add_abs_with_threshold_s16(
+                src, sizeof(TypeParam), src, sizeof(TypeParam), dst,
+                sizeof(TypeParam), 1, 0, 1));
 }
 
 TYPED_TEST(SaturatingAddAbsWithThresholdTest, OversizeImage) {

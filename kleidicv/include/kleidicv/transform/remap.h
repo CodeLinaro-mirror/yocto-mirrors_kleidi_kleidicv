@@ -23,7 +23,7 @@ inline kleidicv_error_t remap_s16_validate(
   CHECK_POINTER_AND_STRIDE(src, src_stride, src_height);
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
   CHECK_POINTER_AND_STRIDE(mapxy, mapxy_stride, dst_height);
-  CHECK_IMAGE_SIZE(src_width, src_height);
+  CHECK_IMAGE_SIZE(src_width, src_height, channels);
   CHECK_IMAGE_SIZE(dst_width, dst_height);
   if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT && border_value == nullptr) {
     return KLEIDICV_ERROR_NULL_POINTER;
@@ -60,7 +60,7 @@ inline kleidicv_error_t remap_s16point5_validate(
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
   CHECK_POINTER_AND_STRIDE(mapxy, mapxy_stride, dst_height);
   CHECK_POINTER_AND_STRIDE(mapfrac, mapfrac_stride, dst_height);
-  CHECK_IMAGE_SIZE(src_width, src_height);
+  CHECK_IMAGE_SIZE(src_width, src_height, channels);
   CHECK_IMAGE_SIZE(dst_width, dst_height);
   if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT && border_value == nullptr) {
     return KLEIDICV_ERROR_NULL_POINTER;
@@ -94,7 +94,7 @@ inline kleidicv_error_t remap_f32_validate(
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, dst_height);
   CHECK_POINTER_AND_STRIDE(mapx, mapx_stride, dst_height);
   CHECK_POINTER_AND_STRIDE(mapy, mapy_stride, dst_height);
-  CHECK_IMAGE_SIZE(src_width, src_height);
+  CHECK_IMAGE_SIZE(src_width, src_height, channels);
   CHECK_IMAGE_SIZE(dst_width, dst_height);
   if (border_type == KLEIDICV_BORDER_TYPE_CONSTANT && border_value == nullptr) {
     return KLEIDICV_ERROR_NULL_POINTER;
@@ -105,7 +105,6 @@ inline kleidicv_error_t remap_f32_validate(
     if (src_stride <= std::numeric_limits<uint32_t>::max() && dst_width >= 4 &&
         src_width < (1ULL << 24) && src_height < (1ULL << 24) &&
         dst_width < (1ULL << 24) && dst_height < (1ULL << 24) &&
-        src_width > 0 && src_height > 0 &&
         (border_type == KLEIDICV_BORDER_TYPE_REPLICATE ||
          border_type == KLEIDICV_BORDER_TYPE_CONSTANT) &&
         (channels == 1 || channels == 2) &&

@@ -220,10 +220,6 @@ kleidicv_error_t resize_linear_u8(const uint8_t *src, size_t src_stride,
     return err;
   }
 
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (resize_linear_u8_is_2x2(src_width, src_height, dst_width, dst_height,
                               channels)) {
     return CALL_RESIZE(kleidicv_resize_2x2_stripe_u8, src, src_stride,
@@ -250,10 +246,6 @@ kleidicv_error_t resize_linear_f32(const float *src, size_t src_stride,
           src, src_stride, src_width, src_height, dst, dst_stride, dst_width,
           dst_height, channels)) {
     return err;
-  }
-
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
   }
 
   return StripeFunction(src, src_stride, src_width, src_height, 0, src_height,

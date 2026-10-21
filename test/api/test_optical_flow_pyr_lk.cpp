@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <optional>
 #include <vector>
@@ -1140,4 +1141,25 @@ TEST(CalcOpticalFlowPyrLk,
             kleidicv_optical_flow_pyr_lk_pyramid_release(prev_pyramid));
   ASSERT_EQ(KLEIDICV_OK,
             kleidicv_optical_flow_pyr_lk_pyramid_release(next_pyramid));
+}
+
+TEST(OpticalFlowEmptyInput, RejectsEmptyImagesEvenWithoutPoints) {
+  const uint8_t src[] = {7};
+  const kleidicv_optflow_lk_context_t context{5, 5, 0, 30, 0.01F, 1e-4F, 0};
+  for (const auto& [width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    for (auto calc : {kleidicv_optical_flow_pyr_lk_u8,
+                      kleidicv_optical_flow_pyr_lk_u8_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                calc(src, 0, src, 0, width, height, channels, nullptr, nullptr,
+                     0, nullptr, nullptr, context));
+    }
+  }
 }

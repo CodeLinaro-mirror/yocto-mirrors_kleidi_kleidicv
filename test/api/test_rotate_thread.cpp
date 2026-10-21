@@ -189,15 +189,19 @@ TEST_F(ThreadRotateValidation, ValidRequestsReachTheScheduler) {
       2, kleidicv_thread_rotate(&src, 1, 128, 1, &dst, 1, 270, 1, scheduler()));
 }
 
-TEST_F(ThreadRotateValidation, EmptyOutOfPlaceRequestsBypassTheScheduler) {
+TEST_F(ThreadRotateValidation,
+       EmptyOutOfPlaceRequestsReturnRangeBeforeScheduling) {
   uint8_t src = 0;
   uint8_t dst = 0;
 
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_rotate(&src, 1, 0, 128, &dst, 1, 90, 1, scheduler()));
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_rotate(&src, 1, 128, 0, &dst, 1, -90, 1, scheduler()));
-  expect_no_work(
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_rotate(&src, 1, 0, 0, &dst, 1, 90, 1, scheduler()));
 }
 

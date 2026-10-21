@@ -88,7 +88,8 @@ class OpticalFlowPyrLKCalc final {
       float* next_points, size_t point_count, uint8_t* status, float* err,
       kleidicv_optflow_lk_context_t context) {
     if (point_count == 0) {
-      return KLEIDICV_OK;
+      return KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height,
+                                                         channels);
     }
 
     if (context.max_level == std::numeric_limits<size_t>::max()) {

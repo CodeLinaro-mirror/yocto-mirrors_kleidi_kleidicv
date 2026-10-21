@@ -51,6 +51,7 @@ std::vector<test> all_tests = merge_tests({
     rotate_tests_get,
     transpose_tests_get,
     add_padding_by_copy_tests_get,
+    threshold_tests_get,
 });
 
 #if MANAGER

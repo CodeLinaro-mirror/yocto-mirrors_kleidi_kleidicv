@@ -512,10 +512,12 @@ TYPED_TEST(InRange, Misalignment) {
 TYPED_TEST(InRange, ZeroImageSize) {
   TypeParam src[1] = {};
   uint8_t dst[1];
-  EXPECT_EQ(KLEIDICV_OK, in_range<TypeParam>()(src, sizeof(TypeParam), dst,
-                                               sizeof(uint8_t), 0, 1, 1, 1));
-  EXPECT_EQ(KLEIDICV_OK, in_range<TypeParam>()(src, sizeof(TypeParam), dst,
-                                               sizeof(uint8_t), 1, 0, 1, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            in_range<TypeParam>()(src, sizeof(TypeParam), dst, sizeof(uint8_t),
+                                  0, 1, 1, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            in_range<TypeParam>()(src, sizeof(TypeParam), dst, sizeof(uint8_t),
+                                  1, 0, 1, 1));
 }
 
 TYPED_TEST(InRange, OversizeImage) {

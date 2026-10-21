@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -384,7 +384,7 @@ kleidicv_error_t merge(const void **srcs, const size_t *src_strides,
   CHECK_POINTER_AND_STRIDE(src0, src_strides[0], height);
   CHECK_POINTER_AND_STRIDE(src1, src_strides[1], height);
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  CHECK_IMAGE_SIZE(width, height, channels);
 
   Rectangle rect{width, height};
   Rows<const ScalarType> src_a_rows{src0, src_strides[0]};
@@ -407,7 +407,8 @@ kleidicv_error_t merge(const void **srcs, const size_t *src_strides,
                               src_c_rows, dst_rows);
     } break;
 
-    case 4: {
+    default: {
+      static_assert(KLEIDICV_MAXIMUM_CHANNEL_COUNT == 4);
       MAKE_POINTER_CHECK_ALIGNMENT(const ScalarType, src2, srcs[2]);
       MAKE_POINTER_CHECK_ALIGNMENT(const ScalarType, src3, srcs[3]);
       CHECK_POINTER_AND_STRIDE(src2, src_strides[2], height);
@@ -418,9 +419,6 @@ kleidicv_error_t merge(const void **srcs, const size_t *src_strides,
       apply_operation_by_rows(operation, rect, src_a_rows, src_b_rows,
                               src_c_rows, src_d_rows, dst_rows);
     } break;
-
-    default:
-      return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
   return KLEIDICV_OK;
 }

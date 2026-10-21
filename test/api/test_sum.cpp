@@ -1,10 +1,12 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <limits>
+#include <utility>
 
 #include "framework/array.h"
 #include "framework/generator.h"
@@ -95,14 +97,18 @@ TEST(Sum, Single) {
 }
 
 TEST(Sum, Empty) {
-  // clang-format off
-  float src[] = {};
-  // clang-format on
-
+  float src[] = {1};
   float sum = std::numeric_limits<float>::max();
-
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_sum_f32(src, 0, 0, 0, &sum));
-  EXPECT_FLOAT_EQ(0, sum);
+  for (const auto& [width, height] :
+       {std::pair<size_t, size_t>{0, 0},
+        {0, 4},
+        {4, 0},
+        {0, std::numeric_limits<size_t>::max()},
+        {std::numeric_limits<size_t>::max(), 0}}) {
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_sum_f32(src, 0, width, height, &sum));
+    EXPECT_FLOAT_EQ(std::numeric_limits<float>::max(), sum);
+  }
 }
 
 TEST(Sum, WidthGreaterThanLanes) {
@@ -268,4 +274,19 @@ TEST(Sum, Misalignment) {
 
   EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT,
             kleidicv_sum_f32(src, sizeof(float) + 1, 2, 2, &sum));
+}
+
+TEST(SumEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const float src[] = {7};
+  float dst[] = {42};
+  for (const auto& [width, height] : {std::array<size_t, 2>{0, 0},
+                                      {0, 8},
+                                      {8, 0},
+                                      {0, SIZE_MAX},
+                                      {SIZE_MAX, 0}}) {
+    for (auto function : {kleidicv_sum_f32, kleidicv_sum_f32_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE, function(src, 0, width, height, dst));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
 }

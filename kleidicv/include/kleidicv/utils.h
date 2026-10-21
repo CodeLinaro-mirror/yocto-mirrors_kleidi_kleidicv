@@ -429,14 +429,19 @@ std::enable_if_t<alignof(T) == 1, kleidicv_error_t> check_pointer_and_stride(
   }                                                            \
   ElementType *name = reinterpret_cast<ElementType *>(from)
 
-inline kleidicv_error_t check_image_size(size_t width,
-                                         size_t height) KLEIDICV_STREAMING {
+inline kleidicv_error_t check_image_size(
+    size_t width, size_t height, size_t channels = 1) KLEIDICV_STREAMING {
+  if (width == 0 || height == 0) {
+    return KLEIDICV_ERROR_RANGE;
+  }
+
   size_t image_size = 0;
   if (__builtin_mul_overflow(width, height, &image_size)) {
     return KLEIDICV_ERROR_RANGE;
   }
 
-  if (image_size > KLEIDICV_MAX_IMAGE_PIXELS) {
+  if (channels == 0 || channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT ||
+      image_size > KLEIDICV_MAX_IMAGE_PIXELS) {
     return KLEIDICV_ERROR_RANGE;
   }
 
@@ -444,12 +449,12 @@ inline kleidicv_error_t check_image_size(size_t width,
 }
 
 // Check whether the image size is acceptable by limiting it.
-#define CHECK_IMAGE_SIZE(width, height)                                   \
-  do {                                                                    \
-    if (kleidicv_error_t image_size_err =                                 \
-            KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) { \
-      return image_size_err;                                              \
-    }                                                                     \
+#define CHECK_IMAGE_SIZE(...)                                           \
+  do {                                                                  \
+    if (kleidicv_error_t image_size_err =                               \
+            KLEIDICV_TARGET_NAMESPACE::check_image_size(__VA_ARGS__)) { \
+      return image_size_err;                                            \
+    }                                                                   \
   } while (false)
 
 // Check whether the rectangle size is acceptable by limiting it.

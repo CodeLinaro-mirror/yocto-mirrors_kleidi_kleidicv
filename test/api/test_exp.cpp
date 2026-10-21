@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
 #include <cstring>
 
@@ -296,4 +297,19 @@ TYPED_TEST(Exp, Misalignment) {
   EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT,
             exp<TypeParam>()(src, sizeof(TypeParam), dst, sizeof(TypeParam) + 1,
                              1, 2));
+}
+
+TEST(ExpEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const float src[] = {7};
+  float dst[] = {42};
+  for (const auto& [width, height] : {std::array<size_t, 2>{0, 0},
+                                      {0, 8},
+                                      {8, 0},
+                                      {0, SIZE_MAX},
+                                      {SIZE_MAX, 0}}) {
+    for (auto function : {kleidicv_exp_f32, kleidicv_exp_f32_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE, function(src, 0, dst, 0, width, height));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
 }

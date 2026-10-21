@@ -45,15 +45,11 @@ inline kleidicv_error_t sobel_validate(const uint8_t *src, size_t src_stride,
                                        int16_t *dst, size_t dst_stride,
                                        size_t width, size_t height,
                                        size_t channels) {
-  if (width < 2 || height < 2) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
-  }
-
   CHECK_POINTER_AND_STRIDE(src, src_stride, height);
   CHECK_POINTER_AND_STRIDE(dst, dst_stride, height);
-  CHECK_IMAGE_SIZE(width, height);
+  CHECK_IMAGE_SIZE(width, height, channels);
 
-  if (channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
+  if (width < 2 || height < 2) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 

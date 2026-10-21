@@ -20,10 +20,6 @@ transpose(const void *src_void, size_t src_stride, void *dst_void,
                              height, pixel_size)) {
     return err;
   }
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const uint8_t *src = reinterpret_cast<const uint8_t *>(src_void);
   uint8_t *dst = reinterpret_cast<uint8_t *>(dst_void);
 

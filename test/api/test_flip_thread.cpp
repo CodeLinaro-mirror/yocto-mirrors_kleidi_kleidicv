@@ -262,10 +262,10 @@ TEST(FlipThreadValidation, HandlesValidationAndNoWorkBeforeScheduling) {
   EXPECT_EQ(KLEIDICV_ERROR_RANGE, invoke(src.data(), 1, 1, 1, src.data(), 2,
                                          KLEIDICV_FLIP_HORIZONTAL, 1));
 
-  EXPECT_EQ(KLEIDICV_OK, invoke(src.data(), 1, 0, 7, dst.data(), 1,
-                                KLEIDICV_FLIP_HORIZONTAL, 1));
-  EXPECT_EQ(KLEIDICV_OK, invoke(src.data(), 1, 7, 0, dst.data(), 1,
-                                KLEIDICV_FLIP_HORIZONTAL, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE, invoke(src.data(), 1, 0, 7, dst.data(), 1,
+                                         KLEIDICV_FLIP_HORIZONTAL, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE, invoke(src.data(), 1, 7, 0, dst.data(), 1,
+                                         KLEIDICV_FLIP_HORIZONTAL, 1));
   EXPECT_EQ(KLEIDICV_OK, invoke(src.data(), 1, 1, 1, src.data(), 1,
                                 KLEIDICV_FLIP_VERTICAL, 1));
 }

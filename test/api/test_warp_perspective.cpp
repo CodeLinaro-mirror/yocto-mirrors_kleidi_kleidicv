@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <climits>
 #include <cmath>
 #include <cstddef>
@@ -663,11 +664,11 @@ TYPED_TEST(WarpPerspectiveNearest, ZeroImageSize) {
   const TypeParam src[1] = {};
   TypeParam dst[1];
 
-  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 0, 1, dst, 1, 0,
-                       1, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 0, 1, dst, 1, 0, 1,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
                        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
-  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, src, 1, 1, 0, dst, 1, 1,
-                       0, transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
+  this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 1, 0, dst, 1, 1, 0,
+                       transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
                        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr);
   this->expect_invalid(KLEIDICV_ERROR_RANGE, src, 1, 0, 1, dst, 8, 8, 1,
                        transform_identity, 1, KLEIDICV_INTERPOLATION_NEAREST,
@@ -780,8 +781,8 @@ TYPED_TEST(WarpPerspectiveNearest, ErrorPrecedence) {
   const TypeParam src[1] = {};
   TypeParam dst[8];
 
-  this->expect_invalid(KLEIDICV_ERROR_NOT_IMPLEMENTED, nullptr, 1, 1, 1, dst, 8,
-                       7, 1, nullptr, 1, KLEIDICV_INTERPOLATION_NEAREST,
+  this->expect_invalid(KLEIDICV_ERROR_NULL_POINTER, nullptr, 1, 1, 1, dst, 8, 7,
+                       1, nullptr, 1, KLEIDICV_INTERPOLATION_NEAREST,
                        KLEIDICV_BORDER_TYPE_CONSTANT, nullptr);
   this->expect_invalid(KLEIDICV_ERROR_NULL_POINTER, src, 1,
                        KLEIDICV_MAX_IMAGE_PIXELS, 2, dst, 8, 8, 1, nullptr, 1,
@@ -1051,5 +1052,42 @@ TYPED_TEST(WarpPerspectiveLinear, HugeHeightSourceAndDestination) {
     TestFixture::test_stripe(src_w, src_h, dst_w, dst_h, dst_h - kPartHeight,
                              dst_h, transform, 1, border_type, border_value, 0,
                              huge_height_part_initializer<TypeParam>);
+  }
+}
+
+TEST(WarpPerspectiveEmptyInput, RejectsInvalidChannelsWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  const float transform[] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+  for (size_t channels :
+       {size_t{0}, size_t{KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1}, SIZE_MAX}) {
+    SCOPED_TRACE(channels);
+    EXPECT_EQ(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_warp_perspective_u8(src, 0, 8, 8, dst, 0, 8, 8, transform,
+                                     channels, KLEIDICV_INTERPOLATION_LINEAR,
+                                     KLEIDICV_BORDER_TYPE_REPLICATE, nullptr));
+    EXPECT_EQ(42, dst[0]);
+  }
+}
+
+TEST(WarpPerspectiveEmptyInput, RejectsEmptyDestinationsWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  const float transform[] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+  for (const auto &[width, height] :
+       {std::array<size_t, 2>{0, 0}, {0, 8}, {8, 0}}) {
+    SCOPED_TRACE(::testing::Message() << width << 'x' << height);
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_warp_perspective_u8(
+                  src, 0, 8, 8, dst, 0, width, height, transform, 1,
+                  KLEIDICV_INTERPOLATION_LINEAR, KLEIDICV_BORDER_TYPE_REPLICATE,
+                  nullptr));
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              kleidicv_warp_perspective_u8(
+                  src, 0, 8, 8, nullptr, 0, width, height, transform, 1,
+                  KLEIDICV_INTERPOLATION_LINEAR, KLEIDICV_BORDER_TYPE_REPLICATE,
+                  nullptr));
+    EXPECT_EQ(42, dst[0]);
   }
 }

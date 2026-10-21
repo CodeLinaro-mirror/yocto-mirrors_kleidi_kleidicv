@@ -209,15 +209,46 @@ INSTANTIATE_TEST_SUITE_P(, ResizeThread,
                                          P{1, 7, 4, 1}, P{12, 34, 5, 2}, P{ 7, 17, 5, 3}, P{11, 19, 3, 4}));
 // clang-format on
 
-TEST_F(ResizeThreadValidation, ZeroImageSize) {
-  uint8_t src[1] = {}, dst[1] = {};
+TEST_F(ResizeThreadValidation,
+       EmptyInputsAndZeroChannelsReturnBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  float src_f32 = 0.0F;
+  float dst_f32 = 42.0F;
+  for (const auto &shape : std::array<std::array<size_t, 3>, 4>{
+           {{0, 0, 1}, {0, 4, 1}, {4, 0, 1}, {4, 4, 0}}}) {
+    const auto [width, height, channels] = shape;
+    SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                    << height << ", channels=" << channels);
+    expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_resize_linear_u8(
+                                              &src, 1, width, height, &dst, 1,
+                                              8, 8, channels, scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_resize_linear_f32(
+                        &src_f32, sizeof(src_f32), width, height, &dst_f32,
+                        sizeof(dst_f32), 8, 8, channels, scheduler()));
+    EXPECT_EQ(42, dst);
+    EXPECT_EQ(42.0F, dst_f32);
+  }
+}
 
-  expect_no_work(kleidicv_thread_resize_linear_u8(src, 0, 0, 0, dst, 0, 0, 0, 1,
-                                                  scheduler()));
-  expect_no_work(kleidicv_thread_resize_linear_u8(src, 1, 1, 0, dst, 2, 2, 0, 1,
-                                                  scheduler()));
-  expect_no_work(kleidicv_thread_resize_linear_u8(src, 0, 0, 1, dst, 0, 0, 2, 1,
-                                                  scheduler()));
+TEST_F(ResizeThreadValidation,
+       EmptyDestinationRetainsValidationAndDoesNotSchedule) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_resize_linear_u8(&src, 16, 16, 4, &dst, 16,
+                                                   16, 0, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_resize_linear_u8(nullptr, 16, 16, 4, &dst, 16,
+                                                   16, 0, 1, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_resize_linear_u8(&src, 16, 16, 4, &dst, 16,
+                                                   16, 0, 0, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_resize_linear_u8(&src, 16, 16, 0, &dst, 16,
+                                                   16, 0, 1, scheduler()));
+  EXPECT_EQ(42, dst);
 }
 
 TEST(ResizeThreadTest, NullPointer) {
@@ -263,7 +294,7 @@ TEST(ResizeThreadTest, NotImplemented) {
     size_t channels = 5;
     std::vector<uint8_t> src(48UL * 2UL * channels);
     std::vector<uint8_t> dst(32UL * 1UL * channels);
-    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               kleidicv_thread_resize_linear_u8(
                   src.data(), sizeof(uint8_t) * channels * 48, 48, 2,
                   dst.data(), sizeof(uint8_t) * channels * 32, 32, 1, channels,
@@ -323,10 +354,14 @@ TEST_F(ResizeThreadValidation, ResizeLinearF32) {
   expect_rejected(KLEIDICV_ERROR_ALIGNMENT, kleidicv_thread_resize_linear_f32(
                                                 &src, sizeof(float), 2, 2, &dst,
                                                 1, 4, 4, 1, scheduler()));
-  expect_no_work(kleidicv_thread_resize_linear_f32(
-      &src, sizeof(float), 0, 2, &dst, sizeof(float), 4, 4, 1, scheduler()));
-  expect_no_work(kleidicv_thread_resize_linear_f32(
-      &src, sizeof(float), 2, 0, &dst, sizeof(float), 4, 4, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_resize_linear_f32(&src, sizeof(float), 0, 2, &dst,
+                                        sizeof(float), 4, 4, 1, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_resize_linear_f32(&src, sizeof(float), 2, 0, &dst,
+                                        sizeof(float), 4, 4, 1, scheduler()));
   expect_dispatched(1, kleidicv_thread_resize_linear_f32(&src, sizeof(float), 2,
                                                          2, &dst, sizeof(float),
                                                          4, 4, 1, scheduler()));

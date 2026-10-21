@@ -56,11 +56,11 @@ class RGB2YUVThread : public testing::TestWithParam<P> {
     test::Array2D<uint8_t> src{20 * channels, 10, 0, channels};
     test::Array2D<uint8_t> dst{60, 10, 0, 3};
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 0, 1,
                    color_format, get_multithreading_fake(2)));
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 1, 0,
                    color_format, get_multithreading_fake(2)));
 
@@ -165,8 +165,10 @@ TEST_F(ThreadRgbToYuv444Validation, ChecksPrecedeScheduling) {
       KLEIDICV_ERROR_RANGE,
       kleidicv_thread_rgb_to_yuv_u8(&src, 1, &dst, 1, kLargeWidth, 2,
                                     KLEIDICV_RGB_TO_YUV444, scheduler()));
-  expect_no_work(kleidicv_thread_rgb_to_yuv_u8(
-      &src, 1, &dst, 1, 0, kMaxSize, KLEIDICV_RGB_TO_YUV444, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_rgb_to_yuv_u8(&src, 1, &dst, 1, 0, kMaxSize,
+                                    KLEIDICV_RGB_TO_YUV444, scheduler()));
 }
 
 }  // namespace

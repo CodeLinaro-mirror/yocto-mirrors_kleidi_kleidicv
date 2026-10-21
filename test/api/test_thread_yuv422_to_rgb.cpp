@@ -67,7 +67,7 @@ class Yuv422Thread : public testing::TestWithParam<P> {
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 5, 1,
                    color_format, get_multithreading_fake(2)));
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 2, 0,
                    color_format, get_multithreading_fake(2)));
 
@@ -198,8 +198,9 @@ TEST_F(ThreadYuv422ToRgbValidation, ChecksPrecedeScheduling) {
       KLEIDICV_ERROR_NOT_IMPLEMENTED,
       kleidicv_thread_yuv_to_rgb_u8(&src, 1, &dst, 1, 1, 1,
                                     KLEIDICV_YUYV_TO_RGB, scheduler()));
-  expect_no_work(kleidicv_thread_yuv_to_rgb_u8(
-      &src, 1, &dst, 1, 2, 0, KLEIDICV_YUYV_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
+                                            &src, 1, &dst, 1, 2, 0,
+                                            KLEIDICV_YUYV_TO_RGB, scheduler()));
 }
 
 }  // namespace

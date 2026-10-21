@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include "empty_input.h"
 #include "tests.h"
 
 template <size_t BorderType>
@@ -39,9 +40,17 @@ bool test_blur_and_downsample(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_pyr_down(const cv::Mat& input, cv::Mat& output) {
+  cv::pyrDown(input, output);
+}
+
 std::vector<test>& blur_and_downsample_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("pyr_down", CV_8UC1, exec_empty_input<empty_pyr_down>),
+      EMPTY_INPUT_TEST("pyr_down", CV_8UC3, exec_empty_input<empty_pyr_down>),
+      EMPTY_INPUT_TEST("pyr_down", CV_8UC4, exec_empty_input<empty_pyr_down>),
+
     TEST("Blur and Downsample, BORDER_REFLECT_101, 1 channel", (test_blur_and_downsample<cv::BORDER_REFLECT_101, 1>), exec_blur_and_downsample<cv::BORDER_REFLECT_101>),
     TEST("Blur and Downsample, BORDER_REFLECT_101, 2 channel", (test_blur_and_downsample<cv::BORDER_REFLECT_101, 2>), exec_blur_and_downsample<cv::BORDER_REFLECT_101>),
     TEST("Blur and Downsample, BORDER_REFLECT_101, 3 channel", (test_blur_and_downsample<cv::BORDER_REFLECT_101, 3>), exec_blur_and_downsample<cv::BORDER_REFLECT_101>),

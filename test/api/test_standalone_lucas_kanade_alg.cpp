@@ -549,14 +549,14 @@ INSTANTIATE_TEST_SUITE_P(
                                   {71.25634F, 71.65993F},
                                   {0.16380F, 0.16381F})));
 
-TEST(StandaloneLKAlgTest, MultipleChannelsNotImplemented) {
+TEST(StandaloneLKAlgTest, ExcessiveChannels) {
   const int channels = 6;
   const uint8_t prev_image[1] = {}, next_image[1] = {};
   const int16_t scharr[1] = {};
   const float prev_points[2] = {};
   float next_points[2] = {}, err[1] = {};
   uint8_t status[1] = {};
-  ASSERT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  ASSERT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_standalone_lucas_kanade_alg_u8(
                 prev_image, sizeof(prev_image), scharr, sizeof(scharr),
                 next_image, sizeof(next_image), 1, 1, channels, prev_points,
@@ -750,7 +750,7 @@ TEST(StandaloneLKAlgTest, WindowBufferPatchTimesChannelsOverflow) {
   float next_points[2] = {}, err[1] = {};
   uint8_t status[1] = {};
 
-  ASSERT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  ASSERT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_standalone_lucas_kanade_alg_u8(
                 prev_image, sizeof(prev_image), scharr, sizeof(scharr),
                 next_image, sizeof(next_image), 1, 1, INT_MAX, prev_points,

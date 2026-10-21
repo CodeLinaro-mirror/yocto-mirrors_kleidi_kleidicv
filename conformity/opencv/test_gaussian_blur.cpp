@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "empty_input.h"
 #include "tests.h"
 
 template <size_t KernelSize, size_t BorderType>
@@ -72,9 +73,17 @@ bool test_gaussian_blur(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_gaussian_blur(const cv::Mat& input, cv::Mat& output) {
+  cv::GaussianBlur(input, output, cv::Size(3, 3), 0);
+}
+
 std::vector<test>& gaussian_blur_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("gaussian_blur", CV_8UC1, exec_empty_input<empty_gaussian_blur>),
+      EMPTY_INPUT_TEST("gaussian_blur", CV_8UC3, exec_empty_input<empty_gaussian_blur>),
+      EMPTY_INPUT_TEST("gaussian_blur", CV_8UC4, exec_empty_input<empty_gaussian_blur>),
+
     TEST("Gaussian blur 3x3, BORDER_REFLECT_101, 1 channel", (test_gaussian_blur<3, cv::BORDER_REFLECT_101, 1>), (exec_gaussian_blur<3, cv::BORDER_REFLECT_101>)),
     TEST("Gaussian blur 3x3, BORDER_REFLECT_101, 2 channel", (test_gaussian_blur<3, cv::BORDER_REFLECT_101, 2>), (exec_gaussian_blur<3, cv::BORDER_REFLECT_101>)),
     TEST("Gaussian blur 3x3, BORDER_REFLECT_101, 3 channel", (test_gaussian_blur<3, cv::BORDER_REFLECT_101, 3>), (exec_gaussian_blur<3, cv::BORDER_REFLECT_101>)),

@@ -58,6 +58,24 @@ FixedBorderTypeValidationResult separable_filter_2d_validate(
     size_t height, size_t channels, const T *kernel_x, size_t kernel_width,
     const T *kernel_y, size_t kernel_height,
     kleidicv_border_type_t border_type) {
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
+                                                              height)) {
+    return {check_error, FixedBorderType{}};
+  }
+
+  if (kleidicv_error_t check_error =
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height,
+                                                      channels)) {
+    return {check_error, FixedBorderType{}};
+  }
+
   if (kernel_width != 5 || kernel_height != 5) {
     return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
   }
@@ -72,29 +90,8 @@ FixedBorderTypeValidationResult separable_filter_2d_validate(
   }
 
   if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
-                                                              height)) {
-    return {check_error, FixedBorderType{}};
-  }
-
-  if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(dst, dst_stride,
-                                                              height)) {
-    return {check_error, FixedBorderType{}};
-  }
-
-  if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) {
-    return {check_error, FixedBorderType{}};
-  }
-
-  if (kleidicv_error_t check_error =
           KLEIDICV_TARGET_NAMESPACE::check_pointers(kernel_x, kernel_y)) {
     return {check_error, FixedBorderType{}};
-  }
-
-  if (channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
-    return {KLEIDICV_ERROR_NOT_IMPLEMENTED, FixedBorderType{}};
   }
 
   return {KLEIDICV_OK, *fixed_border_type};

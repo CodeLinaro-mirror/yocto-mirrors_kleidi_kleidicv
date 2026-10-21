@@ -177,6 +177,7 @@ class MorphologyWorkspace final {
         data_{allocation, &std::free} {}
 
  public:
+  // Processing requires a workspace for a validated, nonempty image.
   // Function complexity is just above the threshold, but this is readable this
   // way, ignore the warning.
   // NOLINTBEGIN(readability-function-cognitive-complexity)
@@ -187,11 +188,6 @@ class MorphologyWorkspace final {
     using S = typename O::SourceType;
     using B = typename O::BufferType;
     typename O::CopyData copy_data{};
-
-    if (KLEIDICV_UNLIKELY(image_size_.width() == 0 ||
-                          image_size_.height() == 0)) {
-      return;
-    }
 
     // Wide rows which can hold data with left and right margins.
     auto wide_rows =

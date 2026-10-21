@@ -34,10 +34,6 @@ rotate(const void *src_void, size_t src_stride, size_t src_width,
                           dst_stride, angle, pixel_size)) {
     return err;
   }
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const uint8_t *src = reinterpret_cast<const uint8_t *>(src_void);
   uint8_t *dst = reinterpret_cast<uint8_t *>(dst_void);
   const int normalized_angle = (angle == 270) ? -90 : angle;

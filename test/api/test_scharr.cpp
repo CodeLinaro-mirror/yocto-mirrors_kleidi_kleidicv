@@ -154,10 +154,10 @@ TEST(ScharrInterleaved, NullPointer) {
 TEST(ScharrInterleaved, ErrorPrecedence) {
   int16_t dst[1] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
             kleidicv_scharr_interleaved_s16_u8(nullptr, sizeof(uint8_t), 2, 3,
                                                1, dst, sizeof(int16_t)));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
             kleidicv_scharr_interleaved_s16_u8(
                 nullptr, sizeof(uint8_t), 3, 3,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, dst, sizeof(int16_t)));
@@ -203,12 +203,12 @@ TEST(ScharrInterleaved, OversizedImage) {
 TEST(ScharrInterleaved, ChannelNumber) {
   uint8_t src[1] = {};
   int16_t dst[1];
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_scharr_interleaved_s16_u8(
                 src, sizeof(uint8_t), 3, 3, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1,
                 dst, sizeof(int16_t)));
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_scharr_interleaved_s16_u8(src, sizeof(uint8_t), 3, 3, 0,
                                                dst, sizeof(int16_t)));
 }
@@ -265,3 +265,28 @@ TEST(FilterStripeWorkers, ScharrHonorsRowRange) {
 }
 
 }  // namespace
+
+TEST(ScharrEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  int16_t gradient[] = {123};
+  for (const auto& [width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    SCOPED_TRACE(::testing::Message()
+                 << width << 'x' << height << ", channels=" << channels);
+    for (bool use_sme : {false, true}) {
+      SCOPED_TRACE(use_sme);
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                (use_sme ? kleidicv_scharr_interleaved_s16_u8_sme
+                         : kleidicv_scharr_interleaved_s16_u8)(
+                    src, 0, width, height, channels, gradient, 0));
+      EXPECT_EQ(123, gradient[0]);
+    }
+  }
+}

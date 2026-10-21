@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -193,7 +193,9 @@ class SharedMemory {
       throw std::runtime_error(
           "Input matrix is bigger than the shared memory size");
     }
-    memcpy(mem_, reinterpret_cast<const void*>(mat.ptr()), matrix_size);
+    if (matrix_size != 0) {
+      memcpy(mem_, reinterpret_cast<const void*>(mat.ptr()), matrix_size);
+    }
   }
 
  private:

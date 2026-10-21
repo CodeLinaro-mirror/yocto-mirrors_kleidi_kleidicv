@@ -16,6 +16,12 @@ This changelog aims to follow the guiding principles of
 ## 26.12 - not yet released
 
 ### Changed
+- Image operations now reject zero source or destination dimensions and explicit
+  channel counts outside `[1, KLEIDICV_MAXIMUM_CHANNEL_COUNT]` with
+  `KLEIDICV_ERROR_RANGE` for otherwise valid calls.
+  Empty sum/count reductions leave result outputs unchanged instead of writing zero.
+  Threaded operations reject these requests before scheduling work. The OpenCV
+  adapter preserves OpenCV's operation-specific empty-input behavior.
 - Custom threading backends must provide non-empty callback ranges satisfying
   `0 <= begin < end <= task_count`.
 

@@ -5,6 +5,7 @@
 #include <limits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core.hpp"
 #include "tests.h"
 
@@ -79,8 +80,23 @@ bool test_transpose_inplace(int index, RecreatedMessageQueue& request_queue,
   TEST("Transpose Inplace, " #channels " channel (" label ")", \
        (test_transpose_inplace<type, channels>), (exec_transpose_inplace))
 
+static void empty_transpose(const cv::Mat& input, cv::Mat& output) {
+  cv::transpose(input, output);
+}
+
 std::vector<test>& transpose_tests_get() {
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("transpose", CV_8UC1, exec_empty_input<empty_transpose>),
+      EMPTY_INPUT_TEST("transpose", CV_8UC3, exec_empty_input<empty_transpose>),
+      EMPTY_INPUT_TEST("transpose", CV_8UC4, exec_empty_input<empty_transpose>),
+      EMPTY_INPUT_TEST("transpose", CV_8SC1, exec_empty_input<empty_transpose>),
+      EMPTY_INPUT_TEST("transpose", CV_16UC1,
+                       exec_empty_input<empty_transpose>),
+      EMPTY_INPUT_TEST("transpose", CV_16SC1,
+                       exec_empty_input<empty_transpose>),
+      EMPTY_INPUT_TEST("transpose", CV_32FC1,
+                       exec_empty_input<empty_transpose>),
+
       TRANSPOSE_TEST(uint8_t, 1, "U8"),
       TRANSPOSE_TEST(uint8_t, 2, "U8"),
       TRANSPOSE_TEST(uint8_t, 3, "U8"),

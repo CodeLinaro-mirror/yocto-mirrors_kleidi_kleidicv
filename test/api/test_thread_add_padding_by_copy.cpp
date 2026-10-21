@@ -33,7 +33,7 @@ std::array<uint8_t, 16> add_padding_by_copy_border_value() {
   return {11,  29,  47, 83, 101, 149, 173, 211,
           227, 241, 13, 31, 59,  71,  97,  131};
 }
-void expect_eq_vector2D(const uint8_t* lhs, const uint8_t* rhs, size_t width,
+void expect_eq_vector2D(const uint8_t *lhs, const uint8_t *rhs, size_t width,
                         size_t height, size_t stride, size_t pixel_size) {
   for (size_t row = 0; row < height; ++row) {
     EXPECT_EQ(
@@ -66,7 +66,7 @@ void check_add_padding_by_copy(size_t src_width, size_t src_height,
   std::generate(src.begin(), src.end(), generator);
 
   const auto border_value = add_padding_by_copy_border_value();
-  const void* border_ptr = border_type == KLEIDICV_BORDER_TYPE_CONSTANT
+  const void *border_ptr = border_type == KLEIDICV_BORDER_TYPE_CONSTANT
                                ? border_value.data()
                                : nullptr;
 
@@ -144,10 +144,26 @@ TEST_P(AddPaddingByCopyThread, LargeVerticalPadding) {
 }
 
 TEST(AddPaddingByCopyThreadValidation, ZeroSizedConstantImages) {
-  check_add_padding_by_copy(0, 3, 2, 1, 4, 3, 3, KLEIDICV_BORDER_TYPE_CONSTANT,
-                            4);
-  check_add_padding_by_copy(4, 0, 2, 3, 1, 2, 4, KLEIDICV_BORDER_TYPE_CONSTANT,
-                            4);
+  const uint8_t src = 7;
+  uint8_t dst = 42;
+  const auto border_value = add_padding_by_copy_border_value();
+  size_t scheduler_calls = 0;
+  const kleidicv_thread_multithreading mt{
+      [](kleidicv_thread_callback, void *, void *parallel_data, size_t) {
+        ++*static_cast<size_t *>(parallel_data);
+        return KLEIDICV_ERROR_CONTEXT_MISMATCH;
+      },
+      &scheduler_calls};
+  for (const auto &shape :
+       std::array<std::array<size_t, 2>, 3>{{{0, 0}, {0, 3}, {4, 0}}}) {
+    const auto [width, height] = shape;
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+              kleidicv_thread_add_padding_by_copy(
+                  &src, 0, &dst, 0, width, height, 2, 3, 4, 5, 1,
+                  KLEIDICV_BORDER_TYPE_CONSTANT, border_value.data(), mt));
+    EXPECT_EQ(42, dst);
+    EXPECT_EQ(size_t{0}, scheduler_calls);
+  }
 }
 
 TEST(AddPaddingByCopyThreadValidation, NotImplemented) {
@@ -174,16 +190,15 @@ TEST(AddPaddingByCopyThreadValidation, NotImplemented) {
                 get_multithreading_fake(2)));
 
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_add_padding_by_copy(
           src, sizeof(src), dst, sizeof(dst), 0, 1, 0, 0, 1, 1, 1,
           KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, get_multithreading_fake(2)));
 
-  EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
-      kleidicv_thread_add_padding_by_copy(
-          src, sizeof(src), dst, sizeof(dst), 1, 0, 0, 0, 1, 1, 1,
-          KLEIDICV_BORDER_TYPE_WRAP, nullptr, get_multithreading_fake(2)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE, kleidicv_thread_add_padding_by_copy(
+                                      src, sizeof(src), dst, sizeof(dst), 1, 0,
+                                      0, 0, 1, 1, 1, KLEIDICV_BORDER_TYPE_WRAP,
+                                      nullptr, get_multithreading_fake(2)));
 }
 
 TEST(AddPaddingByCopyThreadValidation, NullPointers) {

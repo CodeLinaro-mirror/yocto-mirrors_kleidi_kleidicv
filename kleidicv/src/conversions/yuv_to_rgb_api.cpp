@@ -17,7 +17,7 @@ KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv444_to_rgb_u8, yuv444_to_rgb_u8);
 KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv422_to_rgb_u8, yuv422_to_rgb_u8);
 
 // The public semiplanar APIs, including their SME variants, dispatch directly
-// to SIMD implementations. Their backends therefore handle empty images and
+// to SIMD implementations. Their backends therefore reject empty images and
 // validate inputs before accessing image data.
 KLEIDICV_DEFINE_C_API_WITHOUT_SME2(kleidicv_yuv_semiplanar_to_rgb_u8,
                                    yuv420sp_to_rgb_u8);
@@ -29,10 +29,6 @@ kleidicv_error_t yuv_to_rgb_u8(const uint8_t* src, size_t src_stride,
                                uint8_t* dst, size_t dst_stride, size_t width,
                                size_t height,
                                kleidicv_color_conversion_t color_format) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
   switch (base_format) {
@@ -77,8 +73,7 @@ kleidicv_error_t yuv_to_rgb_u8(const uint8_t* src, size_t src_stride,
             yuv420_chroma_height(height));
       }
     case KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP: {
-      const uint8_t* src_uv =
-          get_yuv420sp_uv_plane(src, src_stride, width, height);
+      const uint8_t* src_uv = get_yuv420sp_uv_plane(src, src_stride, height);
       if constexpr (kUseSME) {
         return kleidicv_yuv_semiplanar_to_rgb_u8_sme(
             src, src_stride, src_uv, src_stride, dst, dst_stride, width, height,

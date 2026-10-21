@@ -280,14 +280,16 @@ TEST_F(RGB2YUV422iTest, ReturnsErrorForUnsupportedCombinations) {
     test::test_null_args(function, &src, 1, &dst, 1, kMaxSize, 2,
                          KLEIDICV_RGB_TO_YUYV);
 
-    // Empty images return before checking format, pointers, or size.
+    // Unsupported formats are rejected before image validation.
     constexpr auto kInvalidFormat =
         static_cast<kleidicv_color_conversion_t>(0xFF);
-    EXPECT_EQ(KLEIDICV_OK, function(nullptr, kMaxSize, nullptr, kMaxSize, 0,
-                                    kMaxSize, kInvalidFormat));
-    EXPECT_EQ(KLEIDICV_OK, function(nullptr, kMaxSize, nullptr, kMaxSize,
-                                    kMaxSize, 0, kInvalidFormat));
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              function(nullptr, kMaxSize, nullptr, kMaxSize, 0, kMaxSize,
+                       kInvalidFormat));
+    EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+              function(nullptr, kMaxSize, nullptr, kMaxSize, kMaxSize, 0,
+                       kInvalidFormat));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               function(&src, 1, &dst, 1, 1, 0, KLEIDICV_RGB_TO_YUYV));
     EXPECT_EQ(42, dst);
   }

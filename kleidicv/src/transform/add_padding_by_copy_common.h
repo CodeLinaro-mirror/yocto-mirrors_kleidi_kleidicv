@@ -630,11 +630,6 @@ KLEIDICV_LOCALLY_STREAMING KLEIDICV_ADD_PADDING_BY_COPY_FN_ATTRS
         size_t dst_y_begin, size_t dst_y_end) const {
   KLEIDICV_ADD_PADDING_BY_COPY_CONTEXT(PixelSize, context);
 
-  if (inner_size_ == 0) {
-    fill_constant_rows(dst_y_begin, dst_y_end, context);
-    return KLEIDICV_OK;
-  }
-
   const auto [body_begin, body_end] = split_body_rows(dst_y_begin, dst_y_end);
 
   fill_constant_rows(dst_y_begin, body_begin, context);

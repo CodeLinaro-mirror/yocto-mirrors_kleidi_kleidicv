@@ -43,11 +43,8 @@ static kleidicv_error_t validate_standalone_lucas_kanade_alg_u8_args(
       window_height <= 0) {
     return KLEIDICV_ERROR_RANGE;
   }
-  if (channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
-  }
-
-  CHECK_IMAGE_SIZE(static_cast<size_t>(width), static_cast<size_t>(height));
+  CHECK_IMAGE_SIZE(static_cast<size_t>(width), static_cast<size_t>(height),
+                   static_cast<size_t>(channels));
   CHECK_POINTERS(prev_data, scharr_data, next_data);
   if (point_count > 0) {
     CHECK_POINTERS(prev_points, next_points);

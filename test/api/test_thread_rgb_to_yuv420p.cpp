@@ -57,11 +57,11 @@ class RgbToYuv420Thread : public testing::TestWithParam<P> {
     test::Array2D<uint8_t> src{20 * channels, 10, 0, channels};
     test::Array2D<uint8_t> dst(20, (10 * 3 + 1) / 2);
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 0, 1,
                    color_format, get_multithreading_fake(2)));
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(), 1, 0,
                    color_format, get_multithreading_fake(2)));
 
@@ -207,20 +207,28 @@ TEST_F(RgbToYuv420PValidation, EmptyImages) {
           static_cast<kleidicv_color_conversion_t>(0xFF)}) {
       SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
                                       << height << ", format=" << format);
+      const bool valid_format =
+          format != static_cast<kleidicv_color_conversion_t>(0) &&
+          format != static_cast<kleidicv_color_conversion_t>(0xFF);
+      const auto size_error =
+          valid_format ? KLEIDICV_ERROR_RANGE : KLEIDICV_ERROR_NOT_IMPLEMENTED;
+      const auto pointer_error = valid_format ? KLEIDICV_ERROR_NULL_POINTER
+                                              : KLEIDICV_ERROR_NOT_IMPLEMENTED;
       for (auto function :
            {kleidicv_rgb_to_yuv_u8, kleidicv_rgb_to_yuv_u8_sme}) {
-        EXPECT_EQ(KLEIDICV_OK, function(&src, kMaxSize, &dst, kMaxSize, width,
-                                        height, format));
+        EXPECT_EQ(size_error, function(&src, kMaxSize, &dst, kMaxSize, width,
+                                       height, format));
         EXPECT_EQ(kUntouched, dst);
-        EXPECT_EQ(KLEIDICV_OK, function(nullptr, kMaxSize, nullptr, kMaxSize,
-                                        width, height, format));
+        EXPECT_EQ(pointer_error, function(nullptr, kMaxSize, nullptr, kMaxSize,
+                                          width, height, format));
       }
-      expect_no_work(kleidicv_thread_rgb_to_yuv_u8(
-          &src, kMaxSize, &dst, kMaxSize, width, height, format, scheduler()));
+      expect_rejected(size_error, kleidicv_thread_rgb_to_yuv_u8(
+                                      &src, kMaxSize, &dst, kMaxSize, width,
+                                      height, format, scheduler()));
       EXPECT_EQ(kUntouched, dst);
-      expect_no_work(kleidicv_thread_rgb_to_yuv_u8(nullptr, kMaxSize, nullptr,
-                                                   kMaxSize, width, height,
-                                                   format, scheduler()));
+      expect_rejected(pointer_error, kleidicv_thread_rgb_to_yuv_u8(
+                                         nullptr, kMaxSize, nullptr, kMaxSize,
+                                         width, height, format, scheduler()));
     }
   }
 }

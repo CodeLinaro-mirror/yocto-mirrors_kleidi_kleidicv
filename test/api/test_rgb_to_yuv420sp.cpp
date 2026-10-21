@@ -145,11 +145,11 @@ class RGB2YUV420SpTest : public testing::Test {
                          y_dst.stride(), uv_dst.data(), uv_dst.stride(),
                          src.width(), src.height(), color_format);
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), y_dst.data(), y_dst.stride(),
                    uv_dst.data(), uv_dst.stride(), 0, 1, color_format));
 
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), y_dst.data(), y_dst.stride(),
                    uv_dst.data(), uv_dst.stride(), 1, 0, color_format));
 

@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -418,14 +419,14 @@ TYPED_TEST(ResizeLinear, ZeroImageSize) {
   if constexpr (channels == 1 || std::is_same_v<Elem, uint8_t>) {
     std::vector<Elem> src(channels);
     std::vector<Elem> dst(channels);
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               kleidicv_resize_linear(src.data(), 0, 0, 0, dst.data(), 0, 0, 0,
                                      channels));
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               kleidicv_resize_linear(src.data(), sizeof(Elem) * channels, 1, 0,
                                      dst.data(), sizeof(Elem) * 2 * channels, 2,
                                      0, channels));
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               kleidicv_resize_linear(src.data(), 0, 0, 1, dst.data(), 0, 0, 2,
                                      channels));
   }
@@ -1028,16 +1029,16 @@ TEST(ResizeLinearU8Params, InvalidChannelCount) {
   size_t channels = 5;
   std::vector<uint8_t> src(48UL * 2UL * channels);
   std::vector<uint8_t> dst(32UL * 1UL * channels);
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_resize_linear_u8(
                 src.data(), sizeof(uint8_t) * channels * 48, 48, 2, dst.data(),
                 sizeof(uint8_t) * channels * 32, 32, 1, channels));
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       kleidicv_resize_linear_u8(src.data(), sizeof(uint8_t) * 48, 48, 2,
                                 dst.data(), sizeof(uint8_t) * 32, 32, 1, 0));
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       kleidicv_resize_linear_u8(src.data(), sizeof(uint8_t) * 48, 48, 2,
                                 dst.data(), sizeof(uint8_t) * 32, 32, 1, 5));
 }
@@ -2683,3 +2684,56 @@ INSTANTIATE_TEST_SUITE_P(
                217.0625F, 216.1875F, 215.3125F, 214.4375F, 209.75F,   201.25F,
                192.75F,   184.25F,   175.75F,   167.25F,   158.75F,   150.25F,
                146.0F,    146.0F,    146.0F,    146.0F}}}));
+
+TEST(ResizeLinearEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  const float float_src[] = {7};
+  float float_dst[] = {42};
+  // The resize API has independent dimension limits; use valid limits here.
+  for (const auto &[width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX}}) {
+    for (bool use_sme : {false, true}) {
+      EXPECT_EQ(
+          KLEIDICV_ERROR_RANGE,
+          (use_sme ? kleidicv_resize_linear_u8_sme : kleidicv_resize_linear_u8)(
+              src, 0, width, height, dst, 0, 16, 16, channels));
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE, (use_sme ? kleidicv_resize_linear_f32_sme
+                                               : kleidicv_resize_linear_f32)(
+                                          float_src, 0, width, height,
+                                          float_dst, 0, 16, 16, channels));
+      EXPECT_EQ(42, dst[0]);
+      EXPECT_EQ(42, float_dst[0]);
+    }
+  }
+}
+
+TEST(ResizeLinearEmptyInput, RejectsEmptyDestinationsWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  const float float_src[] = {7};
+  float float_dst[] = {42};
+  for (const auto &[width, height] :
+       {std::array<size_t, 2>{0, 0}, {0, 8}, {8, 0}}) {
+    SCOPED_TRACE(::testing::Message() << width << 'x' << height);
+    for (auto resize :
+         {kleidicv_resize_linear_u8, kleidicv_resize_linear_u8_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                resize(src, 0, 16, 4, dst, 0, width, height, 1));
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                resize(src, 0, 16, 4, nullptr, 0, width, height, 1));
+    }
+    for (auto resize :
+         {kleidicv_resize_linear_f32, kleidicv_resize_linear_f32_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                resize(float_src, 0, 16, 4, float_dst, 0, width, height, 1));
+    }
+    EXPECT_EQ(42, float_dst[0]);
+    EXPECT_EQ(42, dst[0]);
+  }
+}

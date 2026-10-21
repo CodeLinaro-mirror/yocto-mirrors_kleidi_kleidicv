@@ -94,9 +94,9 @@ class YuvSpThread : public testing::TestWithParam<P> {
       }
     };
 
-    EXPECT_EQ(KLEIDICV_OK, invoke(0, 1, color_format, 2));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, invoke(0, 1, color_format, 2));
 
-    EXPECT_EQ(KLEIDICV_OK, invoke(1, 0, color_format, 2));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, invoke(1, 0, color_format, 2));
 
     EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               invoke(KLEIDICV_MAX_IMAGE_PIXELS + 1, 1, color_format, 2));
@@ -343,27 +343,37 @@ TEST_F(Yuv420SpToRgbValidation, EmptyImages) {
                         static_cast<kleidicv_color_conversion_t>(0xFF)}) {
       SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
                                       << height << ", format=" << format);
+      const bool valid_format =
+          format != static_cast<kleidicv_color_conversion_t>(0) &&
+          format != static_cast<kleidicv_color_conversion_t>(0xFF);
+      const auto size_error =
+          valid_format ? KLEIDICV_ERROR_RANGE : KLEIDICV_ERROR_NOT_IMPLEMENTED;
+      const auto pointer_error = valid_format ? KLEIDICV_ERROR_NULL_POINTER
+                                              : KLEIDICV_ERROR_NOT_IMPLEMENTED;
       for (auto function : {kleidicv_yuv_semiplanar_to_rgb_u8,
                             kleidicv_yuv_semiplanar_to_rgb_u8_sme}) {
-        EXPECT_EQ(KLEIDICV_OK, function(&src_y, kMaxSize, &src_uv, kMaxSize,
-                                        &dst, kMaxSize, width, height, format));
+        EXPECT_EQ(size_error, function(&src_y, kMaxSize, &src_uv, kMaxSize,
+                                       &dst, kMaxSize, width, height, format));
         EXPECT_EQ(kUntouched, dst);
-        EXPECT_EQ(KLEIDICV_OK,
+        EXPECT_EQ(pointer_error,
                   function(nullptr, kMaxSize, nullptr, kMaxSize, nullptr,
                            kMaxSize, width, height, format));
       }
-      expect_no_work(kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-          &src_y, kMaxSize, &src_uv, kMaxSize, &dst, kMaxSize, width, height,
-          format, scheduler()));
+      expect_rejected(size_error,
+                      kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                          &src_y, kMaxSize, &src_uv, kMaxSize, &dst, kMaxSize,
+                          width, height, format, scheduler()));
       EXPECT_EQ(kUntouched, dst);
-      expect_no_work(kleidicv_thread_yuv_semiplanar_to_rgb_u8(
-          nullptr, kMaxSize, nullptr, kMaxSize, nullptr, kMaxSize, width,
-          height, format, scheduler()));
+      expect_rejected(pointer_error,
+                      kleidicv_thread_yuv_semiplanar_to_rgb_u8(
+                          nullptr, kMaxSize, nullptr, kMaxSize, nullptr,
+                          kMaxSize, width, height, format, scheduler()));
     }
   }
 
-  expect_no_work(kleidicv_thread_yuv_to_rgb_u8(
-      &src_y, 1, &dst, 1, 0, 3, KLEIDICV_NV12_TO_RGB, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE, kleidicv_thread_yuv_to_rgb_u8(
+                                            &src_y, 1, &dst, 1, 0, 3,
+                                            KLEIDICV_NV12_TO_RGB, scheduler()));
   EXPECT_EQ(kUntouched, dst);
 }
 

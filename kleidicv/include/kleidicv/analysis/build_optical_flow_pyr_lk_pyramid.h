@@ -27,9 +27,9 @@ inline kleidicv_error_t validate_and_compute_build_optical_flow_pyr_lk_levels(
     return KLEIDICV_ERROR_NULL_POINTER;
   }
 
-  if (width == 0 || height == 0 || channels == 0 ||
-      channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT || level_count == 0 ||
-      window_width <= 2 || window_height <= 2 ||
+  CHECK_IMAGE_SIZE(width, height, channels);
+
+  if (level_count == 0 || window_width <= 2 || window_height <= 2 ||
       window_width > KLEIDICV_MAX_OPTICAL_FLOW_PYR_LK_WINDOW_SIZE ||
       window_height > KLEIDICV_MAX_OPTICAL_FLOW_PYR_LK_WINDOW_SIZE) {
     return KLEIDICV_ERROR_RANGE;

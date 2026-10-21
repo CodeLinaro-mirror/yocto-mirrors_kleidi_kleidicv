@@ -412,22 +412,26 @@ TYPED_TEST(Compare, GreaterMisalignment) {
 
 TYPED_TEST(Compare, EqualZeroImageSize) {
   TypeParam src_a[1] = {}, src_b[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, (CompareEqualParams<TypeParam>::api()(
-                             src_a, sizeof(TypeParam), src_b, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 0, 1)));
-  EXPECT_EQ(KLEIDICV_OK, (CompareEqualParams<TypeParam>::api()(
-                             src_a, sizeof(TypeParam), src_b, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 1, 0)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            (CompareEqualParams<TypeParam>::api()(src_a, sizeof(TypeParam),
+                                                  src_b, sizeof(TypeParam), dst,
+                                                  sizeof(TypeParam), 0, 1)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            (CompareEqualParams<TypeParam>::api()(src_a, sizeof(TypeParam),
+                                                  src_b, sizeof(TypeParam), dst,
+                                                  sizeof(TypeParam), 1, 0)));
 }
 
 TYPED_TEST(Compare, GreaterZeroImageSize) {
   TypeParam src_a[1] = {}, src_b[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, (CompareGreaterParams<TypeParam>::api()(
-                             src_a, sizeof(TypeParam), src_b, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 0, 1)));
-  EXPECT_EQ(KLEIDICV_OK, (CompareGreaterParams<TypeParam>::api()(
-                             src_a, sizeof(TypeParam), src_b, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 1, 0)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            (CompareGreaterParams<TypeParam>::api()(
+                src_a, sizeof(TypeParam), src_b, sizeof(TypeParam), dst,
+                sizeof(TypeParam), 0, 1)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            (CompareGreaterParams<TypeParam>::api()(
+                src_a, sizeof(TypeParam), src_b, sizeof(TypeParam), dst,
+                sizeof(TypeParam), 1, 0)));
 }
 
 TYPED_TEST(Compare, EqualOversizeImage) {

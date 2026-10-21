@@ -160,12 +160,14 @@ TYPED_TEST(SaturatingMultiply, Misalignment) {
 
 TYPED_TEST(SaturatingMultiply, ZeroImageSize) {
   TypeParam src[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, saturating_multiply<TypeParam>()(
-                             src, sizeof(TypeParam), src, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 0, 1, 1));
-  EXPECT_EQ(KLEIDICV_OK, saturating_multiply<TypeParam>()(
-                             src, sizeof(TypeParam), src, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 1, 0, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            saturating_multiply<TypeParam>()(src, sizeof(TypeParam), src,
+                                             sizeof(TypeParam), dst,
+                                             sizeof(TypeParam), 0, 1, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            saturating_multiply<TypeParam>()(src, sizeof(TypeParam), src,
+                                             sizeof(TypeParam), dst,
+                                             sizeof(TypeParam), 1, 0, 1));
 }
 
 TYPED_TEST(SaturatingMultiply, OversizeImage) {

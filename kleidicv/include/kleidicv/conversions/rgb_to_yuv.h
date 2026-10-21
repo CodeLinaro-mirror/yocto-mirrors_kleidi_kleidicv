@@ -12,7 +12,7 @@ extern "C" {
 // For internal use only. See instead kleidicv_rgb_to_yuv_u8.
 // Converts an interleaved RGB-family image (RGB, RGBA, BGR, or BGRA)
 // to an interleaved YUV444 image. All channels are 8-bit wide.
-// Handle empty images and validate the complete image before invoking this
+// Reject empty images and validate the complete image before invoking this
 // worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv444_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
@@ -22,7 +22,7 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv444_u8, const uint8_t *src,
 // For internal use only. See instead kleidicv_rgb_to_yuv_u8.
 // Converts an interleaved RGB-family image (RGB, RGBA, BGR, or BGRA)
 // to an interleaved YUV422 image. All channels are 8-bit wide.
-// Handle empty images and validate the complete image before invoking this
+// Reject empty images and validate the complete image before invoking this
 // worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv422_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
@@ -32,8 +32,9 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv422_u8, const uint8_t *src,
 // For internal use only. See instead kleidicv_rgb_to_yuv_u8.
 // Converts a stripe (range of rows) of an interleaved RGB-family image
 // (RGB, RGBA, BGR, or BGRA) to planar YUV420 (I420 or YV12).
-// All channels are 8-bit wide. [begin, end) indexes chroma-plane rows.
-// Handle empty images and validate the complete image before invoking this
+// All channels are 8-bit wide. [begin, end) must be a nonempty range of
+// chroma-plane rows.
+// Reject empty images and validate the complete image before invoking this
 // worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420p_stripe_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
@@ -44,8 +45,9 @@ KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420p_stripe_u8, const uint8_t *src,
 // For internal use only. See instead kleidicv_rgb_to_yuv_semiplanar_u8.
 // Converts a stripe (range of rows) of an interleaved RGB-family image
 // (RGB, RGBA, BGR, or BGRA) to semi-planar YUV420 (nv12 or nv21).
-// All channels are 8-bit wide. [begin, end) indexes chroma-plane rows.
-// Handle empty images and validate the complete image before invoking this
+// All channels are 8-bit wide. [begin, end) must be a nonempty range of
+// chroma-plane rows.
+// Reject empty images and validate the complete image before invoking this
 // worker.
 KLEIDICV_API_DECLARATION(kleidicv_rgb_to_yuv420sp_stripe_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *y_dst, size_t y_stride,

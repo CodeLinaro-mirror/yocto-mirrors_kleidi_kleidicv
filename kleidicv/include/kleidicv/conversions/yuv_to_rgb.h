@@ -11,7 +11,7 @@
 extern "C" {
 // For internal use only. See instead kleidicv_yuv_to_rgb_u8.
 // Converts an interleaved YUV444 image to RGB, RGBA, BGR, or BGRA format.
-// All channels are 8-bit wide. Handle empty images and validate the complete
+// All channels are 8-bit wide. Reject empty images and validate the complete
 // image before invoking this worker.
 KLEIDICV_API_DECLARATION(kleidicv_yuv444_to_rgb_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
@@ -20,7 +20,7 @@ KLEIDICV_API_DECLARATION(kleidicv_yuv444_to_rgb_u8, const uint8_t *src,
 
 // For internal use only. See instead kleidicv_yuv_to_rgb_u8.
 // Converts an interleaved YUV422 image to RGB, RGBA, BGR, or BGRA format.
-// All channels are 8-bit wide. Handle empty images and validate the complete
+// All channels are 8-bit wide. Reject empty images and validate the complete
 // image before invoking this worker.
 KLEIDICV_API_DECLARATION(kleidicv_yuv422_to_rgb_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
@@ -30,8 +30,8 @@ KLEIDICV_API_DECLARATION(kleidicv_yuv422_to_rgb_u8, const uint8_t *src,
 // For internal use only. See instead kleidicv_yuv_to_rgb_u8.
 // Converts a stripe (range of rows) of a planar YUV420 image (I420 or YV12)
 // to RGB, RGBA, BGR, or BGRA format. All channels are 8-bit wide. The stripe
-// range [begin, end) indexes chroma-plane rows. Handle empty images and
-// validate the complete image before invoking this worker.
+// range [begin, end) must be nonempty and indexes chroma-plane rows. Reject
+// empty images and validate the complete image before invoking this worker.
 KLEIDICV_API_DECLARATION(kleidicv_yuv420p_to_rgb_stripe_u8, const uint8_t *src,
                          size_t src_stride, uint8_t *dst, size_t dst_stride,
                          size_t width, size_t height,
@@ -102,14 +102,11 @@ inline kleidicv_error_t yuv420sp_to_rgb_validate(
 }
 
 // Form the UV address without pointer arithmetic on an unvalidated image.
-// The semiplanar entry point validates both planes before accessing them.
+// The semiplanar entry point validates both planes and the image dimensions
+// before accessing image data.
 inline const uint8_t *get_yuv420sp_uv_plane(const uint8_t *src,
-                                            size_t src_stride, size_t width,
+                                            size_t src_stride,
                                             size_t height) KLEIDICV_STREAMING {
-  if (width == 0 || height == 0) {
-    return src;
-  }
-
   const uintptr_t uv_address =
       reinterpret_cast<uintptr_t>(src) + src_stride * height;
   // A wrapped address must not introduce a null UV plane and hide a size error.

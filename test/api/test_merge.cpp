@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -212,8 +212,8 @@ TYPED_TEST(Merge, OneChannelOutOfRange) {
   test_not_implemented<TypeParam, 1>(KLEIDICV_ERROR_RANGE);
 }
 
-TYPED_TEST(Merge, FiveChannelsNotImplemented) {
-  test_not_implemented<TypeParam, 5>();
+TYPED_TEST(Merge, FiveChannelsOutOfRange) {
+  test_not_implemented<TypeParam, 5>(KLEIDICV_ERROR_RANGE);
 }
 
 TEST(Merge128, NotImplemented) { test_not_implemented<__uint128_t, 2>(); }
@@ -304,10 +304,12 @@ TYPED_TEST(Merge, ZeroImageSize) {
   size_t src_strides[kChannels] = {sizeof(TypeParam), sizeof(TypeParam)};
   const size_t dst_stride = kChannels * sizeof(TypeParam);
 
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_merge(srcs, src_strides, dst, dst_stride, 0,
-                                        1, kChannels, sizeof(TypeParam)));
-  EXPECT_EQ(KLEIDICV_OK, kleidicv_merge(srcs, src_strides, dst, dst_stride, 1,
-                                        0, kChannels, sizeof(TypeParam)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            kleidicv_merge(srcs, src_strides, dst, dst_stride, 0, 1, kChannels,
+                           sizeof(TypeParam)));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            kleidicv_merge(srcs, src_strides, dst, dst_stride, 1, 0, kChannels,
+                           sizeof(TypeParam)));
 }
 
 TYPED_TEST(Merge, OversizeImage) {

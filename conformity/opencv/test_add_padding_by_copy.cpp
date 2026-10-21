@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/imgproc/hal/interface.h"
 #include "tests.h"
@@ -410,8 +411,28 @@ bool test_add_padding_by_copy_hal_rejects_transparent_border() {
            roi_y, roi_width, roi_height, top, bottom, left, right>),       \
        (exec_add_padding_by_copy<cv::border, isolated, submatrix>))
 
+static void empty_copy_make_border(const cv::Mat& input, cv::Mat& output) {
+  cv::copyMakeBorder(input, output, 1, 1, 1, 1, cv::BORDER_CONSTANT,
+                     cv::Scalar::all(17));
+}
+
 std::vector<test>& add_padding_by_copy_tests_get() {
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("copy_make_border", CV_8UC1,
+                       exec_empty_input<empty_copy_make_border>),
+      EMPTY_INPUT_TEST("copy_make_border", CV_8UC3,
+                       exec_empty_input<empty_copy_make_border>),
+      EMPTY_INPUT_TEST("copy_make_border", CV_8UC4,
+                       exec_empty_input<empty_copy_make_border>),
+      EMPTY_INPUT_TEST("copy_make_border", CV_8SC1,
+                       exec_empty_input<empty_copy_make_border>),
+      EMPTY_INPUT_TEST("copy_make_border", CV_16UC1,
+                       exec_empty_input<empty_copy_make_border>),
+      EMPTY_INPUT_TEST("copy_make_border", CV_16SC1,
+                       exec_empty_input<empty_copy_make_border>),
+      EMPTY_INPUT_TEST("copy_make_border", CV_32FC1,
+                       exec_empty_input<empty_copy_make_border>),
+
       COPY_BORDER_TEST(BORDER_CONSTANT, uint8_t, 1, false, false, "U8"),
       COPY_BORDER_TEST(BORDER_CONSTANT, uint8_t, 3, false, false, "U8"),
       COPY_BORDER_TEST(BORDER_CONSTANT, uint16_t, 2, false, false, "U16"),

@@ -5,6 +5,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -682,14 +683,15 @@ TEST_F(ThreadBinaryValidation, FullImageSizeReturnsBeforeScheduling) {
 #undef EXPECT_RANGE
 }
 
-TEST_F(ThreadBinaryValidation, EmptyImagePreservesSchedulerBehavior) {
+TEST_F(ThreadBinaryValidation, EmptyImageRetainsPointerPrecedence) {
   uint8_t src_a = 0;
   uint8_t src_b = 0;
   uint8_t dst = 0;
 
-  expect_dispatched(1, kleidicv_thread_bitwise_and(
-                           &src_a, sizeof(src_a), &src_b, sizeof(src_b), &dst,
-                           sizeof(dst), 1, 0, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_bitwise_and(&src_a, sizeof(src_a), &src_b, sizeof(src_b),
+                                  &dst, sizeof(dst), 1, 0, scheduler()));
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
       kleidicv_thread_bitwise_and(nullptr, sizeof(src_a), &src_b, sizeof(src_b),
@@ -708,11 +710,11 @@ TEST_F(ThreadFilterValidation, GaussianBlur) {
   uint8_t src = 0;
   uint8_t dst = 0;
 
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_gaussian_blur_u8(
                       nullptr, 1, &dst, 1, 1, 1, 1, 3, 3, 0.0F, 0.0F,
                       KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_gaussian_blur_u8(
                       nullptr, 1, &dst, 1, 3, 3, 1, 3, 3, 0.0F, 0.0F,
                       KLEIDICV_BORDER_TYPE_TRANSPARENT, scheduler()));
@@ -777,7 +779,7 @@ void check_median_blur_not_implemented(MultithreadedFunc multithreaded_func) {
                          25, 25, 1, 5, 5, KLEIDICV_BORDER_TYPE_REPLICATE,
                          get_multithreading_fake(2)));
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             multithreaded_func(
                 src1.data(), src1.stride(), dst1.data(), dst1.stride(), 25, 25,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, 5, 5,
@@ -863,11 +865,11 @@ TEST_F(ThreadFilterValidation, BlurAndDownsample) {
   uint8_t src = 0;
   uint8_t dst = 0;
 
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_blur_and_downsample_u8(
                       nullptr, 1, 3, 4, &dst, 1, 1,
                       KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_blur_and_downsample_u8(
                       nullptr, 1, 4, 4, &dst, 1, 1,
                       KLEIDICV_BORDER_TYPE_TRANSPARENT, scheduler()));
@@ -941,10 +943,10 @@ TEST_F(ThreadFilterValidation, Scharr) {
   uint8_t src = 0;
   int16_t dst = 0;
 
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_scharr_interleaved_s16_u8(
                       nullptr, 1, 2, 3, 1, &dst, sizeof(dst), scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_scharr_interleaved_s16_u8(
                       nullptr, 1, 3, 3, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1,
                       &dst, sizeof(dst), scheduler()));
@@ -1000,11 +1002,11 @@ TEST_P(Thread, scharr_interleaved_s16_u8) {
   }
 }
 
-TEST(ThreadScharrInterleaved, NotImplemented) {
+TEST(ThreadScharrInterleaved, ExcessiveChannels) {
   uint8_t src[1] = {};
   int16_t dst[1] = {};
   // Unsupported channel count
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             kleidicv_thread_scharr_interleaved_s16_u8(
                 src, 1, 3, 3, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, dst,
                 sizeof(dst), get_multithreading_fake(2)));
@@ -1017,16 +1019,16 @@ TEST_F(ThreadFilterValidation, SeparableFilterU8) {
   uint8_t dst = 0;
   uint8_t kernel[5] = {};
 
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_separable_filter_2d_u8(
                       nullptr, 1, &dst, 1, 5, 5, 1, kernel, 3, kernel, 5,
                       KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_separable_filter_2d_u8(
                       nullptr, 1, &dst, 1, 5, 5, 1, kernel, 5, kernel, 5,
                       KLEIDICV_BORDER_TYPE_TRANSPARENT, scheduler()));
   expect_rejected(
-      KLEIDICV_ERROR_NULL_POINTER,
+      KLEIDICV_ERROR_RANGE,
       kleidicv_thread_separable_filter_2d_u8(
           &src, 1, &dst, 1, 5, 5, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, nullptr,
           5, kernel, 5, KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
@@ -1143,13 +1145,13 @@ TEST_F(ThreadRemapValidation, ChecksPrecedeCapability) {
           KLEIDICV_BORDER_TYPE_REPLICATE, &border_value, scheduler()));
 }
 
-TEST_F(ThreadRemapValidation, ZeroChannelsAreUnsupported) {
+TEST_F(ThreadRemapValidation, ZeroChannelsReturnRange) {
   uint8_t src = 0;
   uint8_t dst = 0;
   int16_t mapxy = 0;
   uint16_t mapfrac = 0;
 
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_RANGE,
                   kleidicv_thread_remap_s16point5_u8(
                       &src, 1, 1, 1, &dst, 8, 8, 1, 0, &mapxy, sizeof(mapxy),
                       &mapfrac, sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE,
@@ -1320,7 +1322,7 @@ TEST_F(ThreadRemapValidation, ValidRequestsReachScheduler) {
              KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
 }
 
-TEST_F(ThreadRemapValidation, ZeroHeightBypassesScheduler) {
+TEST_F(ThreadRemapValidation, ZeroHeightRejectedBeforeScheduling) {
   uint8_t src = 0;
   uint8_t dst = 0;
   uint16_t src_u16 = 17;
@@ -1330,29 +1332,38 @@ TEST_F(ThreadRemapValidation, ZeroHeightBypassesScheduler) {
   float mapx = 0.0F;
   float mapy = 0.0F;
 
-  expect_no_work(kleidicv_thread_remap_s16_u8(
-      &src, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy),
-      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
-  expect_no_work(kleidicv_thread_remap_s16point5_u8(
-      &src, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy), &mapfrac,
-      sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
-  expect_no_work(kleidicv_thread_remap_f32_u8(
-      &src, 1, 1, 1, &dst, 4, 4, 0, 1, &mapx, sizeof(mapx), &mapy, sizeof(mapy),
-      KLEIDICV_INTERPOLATION_NEAREST, KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
-      scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_remap_s16_u8(
+                      &src, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy),
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_remap_s16point5_u8(
+                      &src, 1, 1, 1, &dst, 8, 8, 0, 1, &mapxy, sizeof(mapxy),
+                      &mapfrac, sizeof(mapfrac), KLEIDICV_BORDER_TYPE_REPLICATE,
+                      nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_remap_f32_u8(
+                      &src, 1, 1, 1, &dst, 4, 4, 0, 1, &mapx, sizeof(mapx),
+                      &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
 
-  expect_no_work(kleidicv_thread_remap_s16_u16(
-      &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 8 * sizeof(dst_u16), 8, 0, 1,
-      &mapxy, sizeof(mapxy), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
-      scheduler()));
-  expect_no_work(kleidicv_thread_remap_s16point5_u16(
-      &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 8 * sizeof(dst_u16), 8, 0, 1,
-      &mapxy, sizeof(mapxy), &mapfrac, sizeof(mapfrac),
-      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
-  expect_no_work(kleidicv_thread_remap_f32_u16(
-      &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 4 * sizeof(dst_u16), 4, 0, 1,
-      &mapx, sizeof(mapx), &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
-      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_remap_s16_u16(
+                      &src_u16, sizeof(src_u16), 1, 1, &dst_u16,
+                      8 * sizeof(dst_u16), 8, 0, 1, &mapxy, sizeof(mapxy),
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(
+      KLEIDICV_ERROR_RANGE,
+      kleidicv_thread_remap_s16point5_u16(
+          &src_u16, sizeof(src_u16), 1, 1, &dst_u16, 8 * sizeof(dst_u16), 8, 0,
+          1, &mapxy, sizeof(mapxy), &mapfrac, sizeof(mapfrac),
+          KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_remap_f32_u16(
+                      &src_u16, sizeof(src_u16), 1, 1, &dst_u16,
+                      4 * sizeof(dst_u16), 4, 0, 1, &mapx, sizeof(mapx), &mapy,
+                      sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
   EXPECT_EQ(42, dst_u16);
 }
 
@@ -1671,14 +1682,14 @@ TEST_F(ThreadFilterValidation, SobelHorizontal) {
   uint8_t src = 0;
   int16_t dst = 0;
 
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_NULL_POINTER,
                   kleidicv_thread_sobel_3x3_horizontal_s16_u8(
                       nullptr, 1, &dst, sizeof(dst), 1, 3, 1, scheduler()));
   expect_rejected(
       KLEIDICV_ERROR_NULL_POINTER,
       kleidicv_thread_sobel_3x3_horizontal_s16_u8(
           nullptr, 1, &dst, sizeof(dst), kLargeWidth, 3, 1, scheduler()));
-  expect_rejected(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  expect_rejected(KLEIDICV_ERROR_RANGE,
                   kleidicv_thread_sobel_3x3_horizontal_s16_u8(
                       &src, 1, &dst, sizeof(dst), 3, 3,
                       KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, scheduler()));
@@ -1778,7 +1789,7 @@ TEST(ThreadScaleU8, ZerosizeImage) {
   kleidicv_error_t result = kleidicv_thread_scale_u8(
       src.data(), src.stride(), dst.data(), dst.stride(), 0, 2, 2, 0,
       get_multithreading_fake(2));
-  EXPECT_EQ(KLEIDICV_OK, result);
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE, result);
 }
 
 void check_scale_u8_consistency(size_t width, size_t height, float scale,
@@ -1879,3 +1890,215 @@ TEST_P(SingleMultiThreadInconsistency, ExpF32) {
 INSTANTIATE_TEST_SUITE_P(, SingleMultiThreadInconsistency,
                          testing::Values(P{1, 7, 4}, P{1, 17, 17}, P{1, 33, 33},
                                          P{2, 2, 2}, P{6, 3, 2}));
+
+namespace {
+
+constexpr size_t kEmptyTestMax = std::numeric_limits<size_t>::max();
+constexpr std::array<std::array<size_t, 2>, 5> kEmptyImageShapes = {
+    {{0, 0}, {0, 8}, {8, 0}, {0, kEmptyTestMax}, {kEmptyTestMax, 0}}};
+
+TEST_F(ThreadUnaryValidation, EmptyInputsReturnBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  float src_f32 = 0.0F;
+  float dst_f32 = 42.0F;
+  for (const auto &shape : kEmptyImageShapes) {
+    const auto [width, height] = shape;
+    SCOPED_TRACE(testing::Message()
+                 << "width=" << width << ", height=" << height);
+    for (auto function :
+         {kleidicv_thread_gray_to_rgb_u8, kleidicv_thread_gray_to_rgba_u8,
+          kleidicv_thread_rgb_to_bgr_u8, kleidicv_thread_rgb_to_rgb_u8,
+          kleidicv_thread_rgba_to_bgra_u8, kleidicv_thread_rgba_to_rgba_u8,
+          kleidicv_thread_rgb_to_bgra_u8, kleidicv_thread_rgb_to_rgba_u8,
+          kleidicv_thread_rgba_to_bgr_u8, kleidicv_thread_rgba_to_rgb_u8}) {
+      expect_rejected(KLEIDICV_ERROR_RANGE,
+                      function(&src, 1, &dst, 1, width, height, scheduler()));
+      EXPECT_EQ(42, dst);
+    }
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_scale_u8(&src, 1, &dst, 1, width, height,
+                                             1.0F, 0.0F, scheduler()));
+    expect_rejected(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_thread_exp_f32(&src_f32, sizeof(src_f32), &dst_f32,
+                                sizeof(dst_f32), width, height, scheduler()));
+    EXPECT_EQ(42, dst);
+    EXPECT_EQ(42.0F, dst_f32);
+  }
+}
+
+TEST_F(ThreadBinaryValidation, EmptyInputsReturnBeforeScheduling) {
+  uint8_t src_a = 0;
+  uint8_t src_b = 1;
+  uint8_t dst = 42;
+  for (const auto &shape : kEmptyImageShapes) {
+    const auto [width, height] = shape;
+    SCOPED_TRACE(testing::Message()
+                 << "width=" << width << ", height=" << height);
+    for (auto function :
+         {kleidicv_thread_saturating_add_u8, kleidicv_thread_saturating_sub_u8,
+          kleidicv_thread_saturating_absdiff_u8, kleidicv_thread_bitwise_and,
+          kleidicv_thread_compare_equal_u8,
+          kleidicv_thread_compare_greater_u8}) {
+      expect_rejected(
+          KLEIDICV_ERROR_RANGE,
+          function(&src_a, 1, &src_b, 1, &dst, 1, width, height, scheduler()));
+      EXPECT_EQ(42, dst);
+    }
+  }
+}
+
+using ThreadTransformValidation = test::ThreadValidation;
+
+TEST_F(ThreadTransformValidation, EmptyInputsReturnBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  for (const auto &shape : kEmptyImageShapes) {
+    const auto [width, height] = shape;
+    SCOPED_TRACE(testing::Message()
+                 << "width=" << width << ", height=" << height);
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_transpose(&src, 1, &dst, 1, width, height,
+                                              1, scheduler()));
+    expect_rejected(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_thread_flip(&src, 1, width, height, &dst, 1,
+                             KLEIDICV_FLIP_HORIZONTAL, 1, scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_rotate(&src, 1, width, height, &dst, 1, 90,
+                                           1, scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_add_padding_by_copy(
+                        &src, 1, &dst, 1, width, height, 1, 1, 1, 1, 1,
+                        KLEIDICV_BORDER_TYPE_CONSTANT, &src, scheduler()));
+    EXPECT_EQ(42, dst);
+  }
+}
+
+TEST_F(ThreadFilterValidation,
+       EmptyInputsAndInvalidChannelsReturnBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  int16_t dst_s16 = 42;
+  uint8_t kernel[5] = {1, 1, 1, 1, 1};
+  for (const auto &shape : std::array<std::array<size_t, 3>, 8>{
+           {{0, 0, 1},
+            {0, 5, 1},
+            {5, 0, 1},
+            {0, kEmptyTestMax, 1},
+            {kEmptyTestMax, 0, 1},
+            {5, 5, 0},
+            {5, 5, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+            {5, 5, kEmptyTestMax}}}) {
+    const auto [width, height, channels] = shape;
+    SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                    << height << ", channels=" << channels);
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_gaussian_blur_u8(
+                        &src, 1, &dst, 1, width, height, channels, 3, 3, 0.0F,
+                        0.0F, KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_blur_and_downsample_u8(
+                        &src, 1, width, height, &dst, 1, channels,
+                        KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_median_blur_u8(
+                        &src, 1, &dst, 1, width, height, channels, 3, 3,
+                        KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+    expect_rejected(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_thread_separable_filter_2d_u8(
+            &src, 1, &dst, 1, width, height, channels, kernel, 5, kernel, 5,
+            KLEIDICV_BORDER_TYPE_REPLICATE, scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_scharr_interleaved_s16_u8(
+                        &src, 1, width, height, channels, &dst_s16,
+                        sizeof(dst_s16), scheduler()));
+    for (auto function : {kleidicv_thread_sobel_3x3_horizontal_s16_u8,
+                          kleidicv_thread_sobel_3x3_vertical_s16_u8}) {
+      expect_rejected(KLEIDICV_ERROR_RANGE,
+                      function(&src, 1, &dst_s16, sizeof(dst_s16), width,
+                               height, channels, scheduler()));
+    }
+    EXPECT_EQ(42, dst);
+    EXPECT_EQ(42, dst_s16);
+  }
+}
+
+TEST_F(ThreadRemapValidation,
+       EmptyInputsAndInvalidChannelsReturnBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  int16_t mapxy = 0;
+  uint16_t mapfrac = 0;
+  float mapx = 0.0F;
+  float mapy = 0.0F;
+  for (const auto &shape : std::array<std::array<size_t, 3>, 8>{
+           {{0, 0, 1},
+            {0, 8, 1},
+            {8, 0, 1},
+            {0, kEmptyTestMax, 1},
+            {kEmptyTestMax, 0, 1},
+            {1, 1, 0},
+            {1, 1, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+            {1, 1, kEmptyTestMax}}}) {
+    const auto [width, height, channels] = shape;
+    SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                    << height << ", channels=" << channels);
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_remap_s16_u8(
+                        &src, 1, width, height, &dst, 8, 8, 1, channels, &mapxy,
+                        sizeof(mapxy), KLEIDICV_BORDER_TYPE_REPLICATE, nullptr,
+                        scheduler()));
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_remap_s16point5_u8(
+                        &src, 1, width, height, &dst, 8, 8, 1, channels, &mapxy,
+                        sizeof(mapxy), &mapfrac, sizeof(mapfrac),
+                        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+    expect_rejected(
+        KLEIDICV_ERROR_RANGE,
+        kleidicv_thread_remap_f32_u8(
+            &src, 1, width, height, &dst, 8, 8, 1, channels, &mapx,
+            sizeof(mapx), &mapy, sizeof(mapy), KLEIDICV_INTERPOLATION_NEAREST,
+            KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+    EXPECT_EQ(42, dst);
+  }
+}
+
+using ThreadWarpValidation = test::ThreadValidation;
+
+TEST_F(ThreadWarpValidation,
+       EmptyInputsAndInvalidChannelsReturnBeforeScheduling) {
+  uint8_t src = 0;
+  uint8_t dst = 42;
+  const float identity[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F,
+                             0.0F, 0.0F, 0.0F, 1.0F};
+  for (const auto &shape : std::array<std::array<size_t, 3>, 8>{
+           {{0, 0, 1},
+            {0, 8, 1},
+            {8, 0, 1},
+            {0, kEmptyTestMax, 1},
+            {kEmptyTestMax, 0, 1},
+            {8, 8, 0},
+            {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+            {8, 8, kEmptyTestMax}}}) {
+    const auto [width, height, channels] = shape;
+    SCOPED_TRACE(testing::Message() << "width=" << width << ", height="
+                                    << height << ", channels=" << channels);
+    expect_rejected(KLEIDICV_ERROR_RANGE,
+                    kleidicv_thread_warp_perspective_u8(
+                        &src, 1, width, height, &dst, 8, 8, 1, identity,
+                        channels, KLEIDICV_INTERPOLATION_NEAREST,
+                        KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+    EXPECT_EQ(42, dst);
+  }
+  expect_rejected(KLEIDICV_ERROR_RANGE,
+                  kleidicv_thread_warp_perspective_u8(
+                      &src, 1, 8, 8, &dst, 8, 8, 0, identity, 1,
+                      KLEIDICV_INTERPOLATION_NEAREST,
+                      KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, scheduler()));
+  EXPECT_EQ(42, dst);
+}
+
+}  // namespace

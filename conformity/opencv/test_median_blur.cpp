@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
 #include <vector>
 
+#include "empty_input.h"
 #include "tests.h"
 
 template <size_t KernelSize>
@@ -54,9 +55,20 @@ bool test_median_blur(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_median_blur(const cv::Mat& input, cv::Mat& output) {
+  cv::medianBlur(input, output, 3);
+}
+
 std::vector<test>& median_blur_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("median_blur", CV_8UC1, exec_empty_input<empty_median_blur>),
+      EMPTY_INPUT_TEST("median_blur", CV_8UC3, exec_empty_input<empty_median_blur>),
+      EMPTY_INPUT_TEST("median_blur", CV_8UC4, exec_empty_input<empty_median_blur>),
+      EMPTY_INPUT_TEST("median_blur", CV_16UC1, exec_empty_input<empty_median_blur>),
+      EMPTY_INPUT_TEST("median_blur", CV_16SC1, exec_empty_input<empty_median_blur>),
+      EMPTY_INPUT_TEST("median_blur", CV_32FC1, exec_empty_input<empty_median_blur>),
+
     TEST("Median 3x3, 1 channel (U8)",    (test_median_blur<3, uint8_t, 1>),   exec_median_blur<3>),
     TEST("Median 3x3, 3 channel (U8)",    (test_median_blur<3, uint8_t, 3>),   exec_median_blur<3>),
     TEST("Median 3x3, 4 channel (U8)",    (test_median_blur<3, uint8_t, 4>),   exec_median_blur<3>),

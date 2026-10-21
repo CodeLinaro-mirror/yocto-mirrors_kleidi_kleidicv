@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -83,9 +83,50 @@ bool test_min_max(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static cv::Mat exec_empty_min_max(cv::Mat& input) {
+  const cv::Mat empty(input.rows, input.cols, input.type());
+  double minimum = -99, maximum = -99;
+  cv::Point min_location(37, 37), max_location(37, 37);
+  int error = 0;
+  try {
+    cv::minMaxLoc(empty, &minimum, &maximum, &min_location, &max_location);
+  } catch (const cv::Exception& exception) {
+    error = exception.code;
+  }
+  cv::Mat result(1, 7, CV_64FC1);
+  result.at<double>(0, 0) = static_cast<double>(error);
+  result.at<double>(0, 1) = minimum;
+  result.at<double>(0, 2) = maximum;
+  result.at<double>(0, 3) = min_location.x;
+  result.at<double>(0, 4) = min_location.y;
+  result.at<double>(0, 5) = max_location.x;
+  result.at<double>(0, 6) = max_location.y;
+  return result;
+}
+
+#if MANAGER
+static bool test_empty_min_max(int index, RecreatedMessageQueue& request_queue,
+                               RecreatedMessageQueue& reply_queue) {
+  bool failed = false;
+  for (cv::Size size : {cv::Size(0, 0), cv::Size(0, 4), cv::Size(4, 0)}) {
+    cv::Mat input(size, CV_8UC1);
+    cv::Mat actual = exec_empty_min_max(input);
+    cv::Mat expected =
+        get_expected_from_subordinate(index, request_queue, reply_queue, input);
+    if (are_matrices_different<double>(0, actual, expected)) {
+      fail_print_matrices(size.height, size.width, input, actual, expected);
+      failed = true;
+    }
+  }
+  return failed;
+}
+#endif
+
 std::vector<test>& min_max_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+    TEST("min_max empty input CV_8UC1", test_empty_min_max, exec_empty_min_max),
+
     TEST("min_max_s8, 1 channel", (test_min_max<int8_t, CV_8SC1, false>), (exec_min_max<false>)),
     TEST("min_max_u8, 1 channel", (test_min_max<uint8_t, CV_8UC1, false>), (exec_min_max<false>)),
     TEST("min_max_s16, 1 channel", (test_min_max<int16_t, CV_16SC1, false>), (exec_min_max<false>)),

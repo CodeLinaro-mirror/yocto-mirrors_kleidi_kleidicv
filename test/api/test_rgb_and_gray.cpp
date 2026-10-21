@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+
 #include "framework/array.h"
 #include "framework/utils.h"
 #include "kleidicv/kleidicv.h"
@@ -114,10 +116,10 @@ class ColorTest final {
     test::test_null_args(impl, source.data(), source.stride(), actual.data(),
                          actual.stride(), logical_width, actual.height());
 
-    EXPECT_EQ(KLEIDICV_OK, impl(source.data(), source.stride(), actual.data(),
-                                actual.stride(), 0, 1));
-    EXPECT_EQ(KLEIDICV_OK, impl(source.data(), source.stride(), actual.data(),
-                                actual.stride(), 1, 0));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, impl(source.data(), source.stride(),
+                                         actual.data(), actual.stride(), 0, 1));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, impl(source.data(), source.stride(),
+                                         actual.data(), actual.stride(), 1, 0));
 
     EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(source.data(), source.stride(), actual.data(),
@@ -249,4 +251,28 @@ TEST(RGBA2, BGR) {
 TEST(RGBA2, RGB) {
   ColorTest color_test(4, 3, false);
   color_test.execute_test(kleidicv_rgba_to_rgb_u8);
+}
+
+TEST(RgbAndGrayEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (auto convert :
+       {kleidicv_gray_to_rgb_u8, kleidicv_gray_to_rgb_u8_sme,
+        kleidicv_gray_to_rgba_u8, kleidicv_gray_to_rgba_u8_sme,
+        kleidicv_rgb_to_rgb_u8, kleidicv_rgb_to_bgr_u8,
+        kleidicv_rgb_to_bgr_u8_sme, kleidicv_rgb_to_rgba_u8,
+        kleidicv_rgb_to_rgba_u8_sme, kleidicv_rgb_to_bgra_u8,
+        kleidicv_rgb_to_bgra_u8_sme, kleidicv_rgba_to_rgb_u8,
+        kleidicv_rgba_to_rgb_u8_sme, kleidicv_rgba_to_bgr_u8,
+        kleidicv_rgba_to_bgr_u8_sme, kleidicv_rgba_to_rgba_u8,
+        kleidicv_rgba_to_bgra_u8, kleidicv_rgba_to_bgra_u8_sme}) {
+    for (const auto &[width, height] : {std::array<size_t, 2>{0, 0},
+                                        {0, 8},
+                                        {8, 0},
+                                        {0, SIZE_MAX},
+                                        {SIZE_MAX, 0}}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE, convert(src, 0, dst, 0, width, height));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
 }

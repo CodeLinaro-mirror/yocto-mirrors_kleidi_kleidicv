@@ -446,9 +446,6 @@ kleidicv_error_t kleidicv_thread_transpose(const void *src, size_t src_stride,
                                        src_width, src_height, pixel_size)) {
     return err;
   }
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
   if (src == dst) {
     // In-place transpose swaps elements across the diagonal of the same
     // matrix, so parallel tiles can touch overlapping rows/cols and race.
@@ -476,9 +473,6 @@ kleidicv_error_t kleidicv_thread_flip(const void *src, size_t src_stride,
   if (error != KLEIDICV_OK) {
     return error;
   }
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
 
   const size_t work_item_count =
       kleidicv::flip_work_item_count(height, src == dst, flip_mode);
@@ -502,9 +496,6 @@ kleidicv_error_t kleidicv_thread_rotate(const void *src, size_t src_stride,
   if (kleidicv_error_t err = kleidicv::rotate_validate(
           src, src_stride, width, height, dst, dst_stride, angle, pixel_size)) {
     return err;
-  }
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
   }
   // Reading in columns and writing out rows tends to perform better.
   auto callback = [=](size_t begin, size_t end) {
@@ -563,10 +554,6 @@ kleidicv_error_t kleidicv_thread_yuv_to_rgb_u8(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height, kleidicv_color_conversion_t color_format,
     kleidicv_thread_multithreading mt) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
   switch (base_format) {
@@ -588,7 +575,7 @@ kleidicv_error_t kleidicv_thread_yuv_to_rgb_u8(
                                            height, color_format);
     case KLEIDICV_COLOR_CONVERSION_FMT_YUV420SP: {
       const uint8_t *src_uv =
-          kleidicv::get_yuv420sp_uv_plane(src, src_stride, width, height);
+          kleidicv::get_yuv420sp_uv_plane(src, src_stride, height);
       return kleidicv_thread_yuv_semiplanar_to_rgb_u8(
           src, src_stride, src_uv, src_stride, dst, dst_stride, width, height,
           color_format, mt);
@@ -616,10 +603,6 @@ kleidicv_error_t kleidicv_thread_yuv_semiplanar_to_rgb_u8(
     size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
     size_t height, kleidicv_color_conversion_t color_format,
     kleidicv_thread_multithreading mt) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (kleidicv_error_t err = kleidicv::yuv420sp_to_rgb_validate(
           src_y, src_uv, dst, width, height, color_format)) {
     return err;
@@ -642,10 +625,6 @@ kleidicv_error_t kleidicv_thread_rgb_to_yuv_u8(
     const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
     size_t width, size_t height, kleidicv_color_conversion_t color_format,
     kleidicv_thread_multithreading mt) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
   switch (base_format) {
@@ -688,10 +667,6 @@ kleidicv_error_t kleidicv_thread_rgb_to_yuv_semiplanar_u8(
     uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
     kleidicv_color_conversion_t color_format,
     kleidicv_thread_multithreading mt) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (kleidicv_error_t err = kleidicv::rgb_to_yuv420sp_validate(
           src, y_dst, uv_dst, width, height, color_format)) {
     return err;
@@ -739,7 +714,7 @@ kleidicv_error_t parallel_min_max(FunctionType min_max_func,
     return err;
   }
 
-  const size_t value_count = std::max<size_t>(1, height);
+  const size_t value_count = height;
   kleidicv::thread_internal::HeapArray<ScalarType> min_values;
   kleidicv::thread_internal::HeapArray<ScalarType> max_values;
   if ((p_min_value &&
@@ -775,7 +750,7 @@ kleidicv_error_t parallel_min_max_with_sme(
     return err;
   }
 
-  const size_t value_count = std::max<size_t>(1, height);
+  const size_t value_count = height;
   kleidicv::thread_internal::HeapArray<ScalarType> min_values;
   kleidicv::thread_internal::HeapArray<ScalarType> max_values;
   if ((p_min_value &&
@@ -865,7 +840,7 @@ kleidicv_error_t parallel_min_max_loc(FunctionType min_max_loc_func,
     return err;
   }
 
-  const size_t value_count = std::max<size_t>(1, height);
+  const size_t value_count = height;
   kleidicv::thread_internal::HeapArray<size_t> min_offsets;
   kleidicv::thread_internal::HeapArray<size_t> max_offsets;
   if ((p_min_offset && !min_offsets.allocate_and_fill(value_count, 0)) ||
@@ -1263,10 +1238,6 @@ kleidicv_error_t kleidicv_thread_resize_linear_u8(
     return err;
   }
 
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (kleidicv::resize_linear_u8_is_2x2(src_width, src_height, dst_width,
                                         dst_height, channels)) {
     return kleidicv_thread_resize_linear_fixed_scale_u8(
@@ -1308,10 +1279,6 @@ kleidicv_error_t kleidicv_thread_resize_linear_f32(
     return err;
   }
 
-  if (src_width == 0 || src_height == 0) {
-    return KLEIDICV_OK;
-  }
-
   auto callback = [=](size_t y_begin, size_t y_end) {
     return kleidicv_resize_linear_stripe_f32(
         src, src_stride, src_width, src_height, y_begin,
@@ -1344,9 +1311,6 @@ kleidicv_error_t kleidicv_thread_remap_s16_u8(
           border_value)) {
     return err;
   }
-  if (dst_height == 0) {
-    return KLEIDICV_OK;
-  }
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_remap_s16_u8(
         src, src_stride, src_width, src_height,
@@ -1369,9 +1333,6 @@ kleidicv_error_t kleidicv_thread_remap_s16_u16(
           dst_height, channels, mapxy, mapxy_stride, border_type,
           border_value)) {
     return err;
-  }
-  if (dst_height == 0) {
-    return KLEIDICV_OK;
   }
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_remap_s16_u16(
@@ -1396,9 +1357,6 @@ kleidicv_error_t kleidicv_thread_remap_s16point5_u8(
           dst_height, channels, mapxy, mapxy_stride, mapfrac, mapfrac_stride,
           border_type, border_value)) {
     return err;
-  }
-  if (dst_height == 0) {
-    return KLEIDICV_OK;
   }
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_remap_s16point5_u8(
@@ -1427,9 +1385,6 @@ kleidicv_error_t kleidicv_thread_remap_s16point5_u16(
           border_type, border_value)) {
     return err;
   }
-  if (dst_height == 0) {
-    return KLEIDICV_OK;
-  }
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_remap_s16point5_u16(
         src, src_stride, src_width, src_height,
@@ -1457,9 +1412,6 @@ kleidicv_error_t kleidicv_thread_remap_f32_u8(
           interpolation, border_type, border_value)) {
     return err;
   }
-  if (dst_height == 0) {
-    return KLEIDICV_OK;
-  }
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_remap_f32_u8(
         src, src_stride, src_width, src_height,
@@ -1485,9 +1437,6 @@ kleidicv_error_t kleidicv_thread_remap_f32_u16(
           dst_height, channels, mapx, mapx_stride, mapy, mapy_stride,
           interpolation, border_type, border_value)) {
     return err;
-  }
-  if (dst_height == 0) {
-    return KLEIDICV_OK;
   }
   auto callback = [=](size_t begin, size_t end) {
     return kleidicv_remap_f32_u16(

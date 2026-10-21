@@ -1,7 +1,8 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/imgproc/hal/interface.h"
 #include "tests.h"
@@ -58,9 +59,16 @@ bool test_in_range_custom(int index, RecreatedMessageQueue& request_queue,
 
 #endif
 
+static void empty_in_range(const cv::Mat& input, cv::Mat& output) {
+  cv::inRange(input, cv::Scalar::all(0), cv::Scalar::all(255), output);
+}
+
 std::vector<test>& in_range_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("in_range", CV_8UC1, exec_empty_input<empty_in_range>),
+      EMPTY_INPUT_TEST("in_range", CV_32FC1, exec_empty_input<empty_in_range>),
+
     TEST("InRange uint8,  lower_bound =           1, upper_bound =           2", (test_in_range<1000, 2000, CV_8UC1>), (exec_in_range<1000, 2000>)),
     TEST("InRange uint8,  lower_bound =          10, upper_bound =          11", (test_in_range<10000, 11000, CV_8UC1>), (exec_in_range<10000, 11000>)),
     TEST("InRange uint8,  lower_bound =           3, upper_bound =           4", (test_in_range<3000, 4000, CV_8UC1>), (exec_in_range<3000, 4000>)),

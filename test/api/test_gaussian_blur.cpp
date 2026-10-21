@@ -605,11 +605,11 @@ TYPED_TEST(GaussianBlur, NullPointer) {
 TYPED_TEST(GaussianBlur, ErrorPrecedence) {
   TypeParam dst[1] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
             gaussian_blur<TypeParam>()(nullptr, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 3, 3, 1, 3, 3, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_TRANSPARENT));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
             gaussian_blur<TypeParam>()(nullptr, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 1, 3, 1, 3, 3, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REPLICATE));
@@ -674,11 +674,11 @@ TYPED_TEST(GaussianBlur, Misalignment) {
 TYPED_TEST(GaussianBlur, ZeroImageSize3x3) {
   TypeParam src[1] = {}, dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 0, 3, 1, 3, 3, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 3, 0, 1, 3, 3, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
@@ -687,11 +687,11 @@ TYPED_TEST(GaussianBlur, ZeroImageSize3x3) {
 TYPED_TEST(GaussianBlur, ZeroImageSize5x5) {
   TypeParam src[1] = {}, dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 0, 5, 1, 5, 5, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 5, 0, 1, 5, 5, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
@@ -700,11 +700,11 @@ TYPED_TEST(GaussianBlur, ZeroImageSize5x5) {
 TYPED_TEST(GaussianBlur, ZeroImageSize7x7) {
   TypeParam src[1] = {}, dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 0, 7, 1, 7, 7, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 7, 0, 1, 7, 7, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
@@ -713,11 +713,11 @@ TYPED_TEST(GaussianBlur, ZeroImageSize7x7) {
 TYPED_TEST(GaussianBlur, ZeroImageSize9x9) {
   TypeParam src[1] = {}, dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 0, 9, 1, 9, 9, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 9, 0, 1, 9, 9, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
@@ -726,11 +726,11 @@ TYPED_TEST(GaussianBlur, ZeroImageSize9x9) {
 TYPED_TEST(GaussianBlur, ZeroImageSize15x15) {
   TypeParam src[1] = {}, dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 0, 15, 1, 15, 15, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(src, sizeof(TypeParam), dst,
                                        sizeof(TypeParam), 15, 0, 1, 15, 15, 0.0,
                                        0.0, KLEIDICV_BORDER_TYPE_REFLECT));
@@ -978,7 +978,7 @@ TYPED_TEST(GaussianBlur, ChannelNumber) {
                                        test::Options::vector_length());
 
   TypeParam src[1] = {}, dst[1] = {};
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             gaussian_blur<TypeParam>()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), validSize,
                 validSize, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, 15, 15, 0.0, 0.0,
@@ -1221,3 +1221,29 @@ TEST(GaussianBlurArbitraryStripe, HonorsRowRange) {
 }
 
 }  // namespace
+
+TEST(GaussianBlurEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto &[width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    SCOPED_TRACE(::testing::Message()
+                 << width << 'x' << height << ", channels=" << channels);
+    for (bool use_sme : {false, true}) {
+      SCOPED_TRACE(use_sme);
+      EXPECT_EQ(
+          KLEIDICV_ERROR_RANGE,
+          (use_sme ? kleidicv_gaussian_blur_u8_sme : kleidicv_gaussian_blur_u8)(
+              src, 0, dst, 0, width, height, channels, 3, 3, 0, 0,
+              KLEIDICV_BORDER_TYPE_REPLICATE));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
+}

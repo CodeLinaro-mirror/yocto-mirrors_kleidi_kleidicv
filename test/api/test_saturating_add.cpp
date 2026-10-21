@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <type_traits>
 
 #include "framework/generator.h"
@@ -164,12 +165,14 @@ TYPED_TEST(SaturatingAdd, Misalignment) {
 
 TYPED_TEST(SaturatingAdd, ZeroImageSize) {
   TypeParam src[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, saturating_add<TypeParam>()(
-                             src, sizeof(TypeParam), src, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 0, 1));
-  EXPECT_EQ(KLEIDICV_OK, saturating_add<TypeParam>()(
-                             src, sizeof(TypeParam), src, sizeof(TypeParam),
-                             dst, sizeof(TypeParam), 1, 0));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            saturating_add<TypeParam>()(src, sizeof(TypeParam), src,
+                                        sizeof(TypeParam), dst,
+                                        sizeof(TypeParam), 0, 1));
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            saturating_add<TypeParam>()(src, sizeof(TypeParam), src,
+                                        sizeof(TypeParam), dst,
+                                        sizeof(TypeParam), 1, 0));
 }
 
 TYPED_TEST(SaturatingAdd, OversizeImage) {
@@ -183,4 +186,18 @@ TYPED_TEST(SaturatingAdd, OversizeImage) {
                 src, sizeof(TypeParam), src, sizeof(TypeParam), dst,
                 sizeof(TypeParam), KLEIDICV_MAX_IMAGE_PIXELS,
                 KLEIDICV_MAX_IMAGE_PIXELS));
+}
+
+TEST(SaturatingAddEmptyInput, RetainsPointerAndAlignmentPrecedence) {
+  const uint16_t src[] = {7};
+  uint16_t dst[] = {42};
+  for (auto add :
+       {kleidicv_saturating_add_u16, kleidicv_saturating_add_u16_sme}) {
+    EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
+              add(nullptr, 0, src, 0, dst, 0, 0, 0));
+    EXPECT_EQ(KLEIDICV_ERROR_ALIGNMENT, add(src, 1, src, 0, dst, 0, 0, 2));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, add(src, 0, src, 0, dst, 0, 0, SIZE_MAX));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, add(src, 0, src, 0, dst, 0, SIZE_MAX, 0));
+    EXPECT_EQ(42, dst[0]);
+  }
 }

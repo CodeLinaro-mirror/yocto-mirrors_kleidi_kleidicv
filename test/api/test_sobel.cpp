@@ -158,10 +158,10 @@ TYPED_TEST(Sobel, ZeroImageSizeHorizontal) {
   typename KernelTestParams::InputType src[1] = {};
   typename KernelTestParams::OutputType dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             sobel_3x3_horizontal<TypeParam>()(src, sizeof(src), dst,
                                               sizeof(dst), 0, 1, 1));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             sobel_3x3_horizontal<TypeParam>()(src, sizeof(src), dst,
                                               sizeof(dst), 1, 0, 1));
 }
@@ -171,10 +171,10 @@ TYPED_TEST(Sobel, ZeroImageSizeVertical) {
   typename KernelTestParams::InputType src[1] = {};
   typename KernelTestParams::OutputType dst[1];
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             sobel_3x3_vertical<TypeParam>()(src, sizeof(src), dst, sizeof(dst),
                                             0, 1, 1));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             sobel_3x3_vertical<TypeParam>()(src, sizeof(src), dst, sizeof(dst),
                                             1, 0, 1));
 }
@@ -231,7 +231,7 @@ TYPED_TEST(Sobel, ErrorPrecedence) {
   typename KernelTestParams::InputType src[1] = {};
   typename KernelTestParams::OutputType dst[1] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_NULL_POINTER,
             sobel_3x3_horizontal<TypeParam>()(nullptr, sizeof(src), dst,
                                               sizeof(dst), 1, 3, 1));
   EXPECT_EQ(
@@ -299,11 +299,11 @@ TYPED_TEST(Sobel, ChannelNumber) {
   typename KernelTestParams::OutputType dst[1];
   size_t validSize = 2;
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             sobel_3x3_horizontal<TypeParam>()(
                 src, sizeof(src), dst, sizeof(dst), validSize, validSize,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             sobel_3x3_vertical<TypeParam>()(
                 src, sizeof(src), dst, sizeof(dst), validSize, validSize,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1));
@@ -352,3 +352,32 @@ TEST(FilterStripeWorkers, SobelHonorsRowRange) {
 }
 
 }  // namespace
+
+TEST(SobelEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  int16_t gradient[] = {123};
+  for (const auto &[width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    SCOPED_TRACE(::testing::Message()
+                 << width << 'x' << height << ", channels=" << channels);
+    for (bool use_sme : {false, true}) {
+      SCOPED_TRACE(use_sme);
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                (use_sme ? kleidicv_sobel_3x3_horizontal_s16_u8_sme
+                         : kleidicv_sobel_3x3_horizontal_s16_u8)(
+                    src, 0, gradient, 0, width, height, channels));
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                (use_sme ? kleidicv_sobel_3x3_vertical_s16_u8_sme
+                         : kleidicv_sobel_3x3_vertical_s16_u8)(
+                    src, 0, gradient, 0, width, height, channels));
+      EXPECT_EQ(123, gradient[0]);
+    }
+  }
+}

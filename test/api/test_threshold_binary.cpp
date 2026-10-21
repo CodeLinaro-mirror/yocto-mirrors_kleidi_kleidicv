@@ -184,10 +184,10 @@ TYPED_TEST(ThresholdBinary, Misalignment) {
 
 TYPED_TEST(ThresholdBinary, ZeroImageSize) {
   TypeParam src[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             threshold_binary<TypeParam>()(src, sizeof(TypeParam), dst,
                                           sizeof(TypeParam), 0, 1, 1, 1));
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             threshold_binary<TypeParam>()(src, sizeof(TypeParam), dst,
                                           sizeof(TypeParam), 1, 0, 1, 1));
 }

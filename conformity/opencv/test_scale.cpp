@@ -1,7 +1,8 @@
-// SPDX-FileCopyrightText: 2024 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "utils.h"
 
@@ -55,9 +56,18 @@ bool test_scale(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_convert_to(const cv::Mat& input, cv::Mat& output) {
+  input.convertTo(output, input.type(), 2, 1);
+}
+
 std::vector<test>& scale_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("convert_to", CV_8UC1, exec_empty_input<empty_convert_to>),
+      EMPTY_INPUT_TEST("convert_to", CV_8UC3, exec_empty_input<empty_convert_to>),
+      EMPTY_INPUT_TEST("convert_to", CV_8UC4, exec_empty_input<empty_convert_to>),
+      EMPTY_INPUT_TEST("convert_to", CV_32FC1, exec_empty_input<empty_convert_to>),
+
     TEST("Scale float32, scale=1.0, shift=2.0", (test_scale<1000, 2000, CV_32FC4, CV_32FC4, false>), (exec_scale<1000, 2000, CV_32FC4, false>)),
     TEST("Scale float32, scale=-10.0, shift=0.0", (test_scale<(-10000), 0, CV_32FC1, CV_32FC1, false>), (exec_scale<(-10000), 0, CV_32FC1, false>)),
     TEST("Scale float32, scale=3.14, shift=2.72", (test_scale<3140, 2720, CV_32FC2, CV_32FC2, false>), (exec_scale<3140, 2720, CV_32FC2, false>)),

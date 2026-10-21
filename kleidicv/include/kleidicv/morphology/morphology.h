@@ -96,17 +96,9 @@ kleidicv_error_t erode(const T *src, size_t src_stride, T *dst,
 namespace KLEIDICV_TARGET_NAMESPACE {
 
 inline bool morphology_is_implemented(size_t width, size_t height,
-                                      size_t kernel_width, size_t kernel_height,
-                                      size_t channels) KLEIDICV_STREAMING {
-  if (channels > KLEIDICV_MAXIMUM_CHANNEL_COUNT) {
-    return false;
-  }
-
-  if (width < kernel_width - 1 || height < kernel_height - 1) {
-    return false;
-  }
-
-  return true;
+                                      size_t kernel_width,
+                                      size_t kernel_height) KLEIDICV_STREAMING {
+  return width >= kernel_width - 1 && height >= kernel_height - 1;
 }
 
 }  // namespace KLEIDICV_TARGET_NAMESPACE

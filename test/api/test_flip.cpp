@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/utils.h"
@@ -338,10 +340,10 @@ TEST_P(Flip, ZeroImageSize) {
   const size_t pixel_size = GetParam();
 
   for (kleidicv_flip_mode_t flip_mode : kFlipModes) {
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               kleidicv_flip(src.data(), pixel_size, 0, 1, dst.data(),
                             pixel_size, flip_mode, pixel_size));
-    EXPECT_EQ(KLEIDICV_OK,
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               kleidicv_flip(src.data(), pixel_size, 1, 0, dst.data(),
                             pixel_size, flip_mode, pixel_size));
   }
@@ -493,5 +495,21 @@ TEST(FlipNotImplemented, ElementSize) {
     ASSERT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
               kleidicv_flip(src.data(), stride, width, height, dst.data(),
                             stride, flip_mode, pixel_size));
+  }
+}
+
+TEST(FlipEmptyInput, RejectsEmptyImagesWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto &[width, height] : {std::array<size_t, 2>{0, 0},
+                                      {0, 8},
+                                      {8, 0},
+                                      {0, SIZE_MAX},
+                                      {SIZE_MAX, 0}}) {
+    for (auto function : {kleidicv_flip, kleidicv_flip_sme}) {
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE, function(src, 0, width, height, dst, 0,
+                                               KLEIDICV_FLIP_HORIZONTAL, 1));
+      EXPECT_EQ(42, dst[0]);
+    }
   }
 }

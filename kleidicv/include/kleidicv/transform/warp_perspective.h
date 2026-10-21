@@ -37,15 +37,6 @@ inline kleidicv_error_t warp_perspective_validate(
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 
-  if (dst_width < 8 ||
-      (interpolation != KLEIDICV_INTERPOLATION_NEAREST &&
-       interpolation != KLEIDICV_INTERPOLATION_LINEAR) ||
-      (border_type != KLEIDICV_BORDER_TYPE_REPLICATE &&
-       border_type != KLEIDICV_BORDER_TYPE_CONSTANT) ||
-      channels != 1) {
-    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
-  }
-
   if (kleidicv_error_t err =
           KLEIDICV_TARGET_NAMESPACE::check_pointer_and_stride(src, src_stride,
                                                               src_height)) {
@@ -64,13 +55,23 @@ inline kleidicv_error_t warp_perspective_validate(
     return KLEIDICV_ERROR_NULL_POINTER;
   }
 
+  CHECK_IMAGE_SIZE(src_width, src_height, channels);
+  CHECK_IMAGE_SIZE(dst_width, dst_height);
+
+  if (dst_width < 8 ||
+      (interpolation != KLEIDICV_INTERPOLATION_NEAREST &&
+       interpolation != KLEIDICV_INTERPOLATION_LINEAR) ||
+      (border_type != KLEIDICV_BORDER_TYPE_REPLICATE &&
+       border_type != KLEIDICV_BORDER_TYPE_CONSTANT) ||
+      channels != 1) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+
   // Calculating in float32_t will only be precise until 24 bits, and
-  // multiplication can only be done with 32x32 bits. Empty source images are
-  // not supported. These dimension limits also bound the pixel count below
-  // KLEIDICV_MAX_IMAGE_PIXELS.
+  // multiplication can only be done with 32x32 bits.
   if (src_width >= (1ULL << 24) || src_height >= (1ULL << 24) ||
       dst_width >= (1ULL << 24) || dst_height >= (1ULL << 24) ||
-      src_stride >= (1ULL << 32) || src_width == 0 || src_height == 0) {
+      src_stride >= (1ULL << 32)) {
     return KLEIDICV_ERROR_RANGE;
   }
 

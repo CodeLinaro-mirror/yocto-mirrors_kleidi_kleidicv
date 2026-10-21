@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -455,7 +455,12 @@ TYPED_TEST(FloatConversion, SizingAboutHalfRemaining) {
 TYPED_TEST(FloatConversion, SizingEmpty) {
   using InputType = typename TypeParam::first_type;
   using OutputType = typename TypeParam::second_type;
-  FloatConversionTest<InputType, OutputType>{}.test_sizing(0, 0);
+  InputType src[] = {1};
+  OutputType dst[] = {42};
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+            (float_conversion<InputType, OutputType>()(
+                src, sizeof(InputType), dst, sizeof(OutputType), 0, 0)));
+  EXPECT_EQ(OutputType{42}, dst[0]);
 }
 TYPED_TEST(FloatConversion, SizingOne) {
   using InputType = typename TypeParam::first_type;

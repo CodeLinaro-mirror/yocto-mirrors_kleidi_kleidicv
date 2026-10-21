@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "tests.h"
 
@@ -43,9 +44,15 @@ bool test_exp(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_exp(const cv::Mat& input, cv::Mat& output) {
+  cv::exp(input, output);
+}
+
 std::vector<test>& exp_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("exp", CV_32FC1, exec_empty_input<empty_exp>),
+
     TEST("Exp float, 1 channel", (test_exp<1>), exec_exp),
     TEST("Exp float, 2 channel", (test_exp<2>), exec_exp),
     TEST("Exp float, 3 channel", (test_exp<3>), exec_exp),

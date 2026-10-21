@@ -478,7 +478,7 @@ TYPED_TEST(Morphology, UnsupportedSize) {
                 anchor.y, border, border_value, 1));
 }
 
-TYPED_TEST(Morphology, UnsupportedChannels) {
+TYPED_TEST(Morphology, ExcessiveChannels) {
   TypeParam src[1] = {}, dst[1] = {};
   kleidicv_rectangle_t small_rect{1, 1};
   kleidicv_point_t anchor{0, 0};
@@ -486,13 +486,13 @@ TYPED_TEST(Morphology, UnsupportedChannels) {
   const uint8_t border_value[] = {0, 0, 1, 1};
 
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       DilateParams<TypeParam>::api()(
           src, sizeof(TypeParam), dst, sizeof(TypeParam), 1, 1,
           KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, small_rect.width,
           small_rect.height, anchor.x, anchor.y, border, border_value, 1));
   EXPECT_EQ(
-      KLEIDICV_ERROR_NOT_IMPLEMENTED,
+      KLEIDICV_ERROR_RANGE,
       ErodeParams<TypeParam>::api()(
           src, sizeof(TypeParam), dst, sizeof(TypeParam), 1, 1,
           KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, small_rect.width,
@@ -647,12 +647,12 @@ TYPED_TEST(Morphology, InvalidChannelNumber) {
   TypeParam src[1] = {}, dst[1] = {};
   const uint8_t border_value[] = {};
 
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             DilateParams<TypeParam>::api()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), 1, 1,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, 1, 1, 0, 0,
                 KLEIDICV_BORDER_TYPE_REPLICATE, border_value, 1));
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             ErodeParams<TypeParam>::api()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), 1, 1,
                 KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, 1, 1, 0, 0,
@@ -712,11 +712,11 @@ TYPED_TEST(Morphology, ErodeMisalignment) {
 TYPED_TEST(Morphology, DilateZeroImageSize) {
   TypeParam src[1] = {}, dst[1] = {};
   const uint8_t border_value[] = {0, 0, 1, 1};
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             DilateParams<TypeParam>::api()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), 0, 1, 1, 1, 1,
                 0, 0, KLEIDICV_BORDER_TYPE_REPLICATE, border_value, 1));
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             DilateParams<TypeParam>::api()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), 1, 0, 1, 1, 1,
                 0, 0, KLEIDICV_BORDER_TYPE_REPLICATE, border_value, 1));
@@ -725,11 +725,11 @@ TYPED_TEST(Morphology, DilateZeroImageSize) {
 TYPED_TEST(Morphology, ErodeZeroImageSize) {
   TypeParam src[1] = {}, dst[1] = {};
   const uint8_t border_value[] = {0, 0, 1, 1};
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             ErodeParams<TypeParam>::api()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), 0, 1, 1, 1, 1,
                 0, 0, KLEIDICV_BORDER_TYPE_REPLICATE, border_value, 1));
-  EXPECT_EQ(KLEIDICV_OK,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             ErodeParams<TypeParam>::api()(
                 src, sizeof(TypeParam), dst, sizeof(TypeParam), 1, 0, 1, 1, 1,
                 0, 0, KLEIDICV_BORDER_TYPE_REPLICATE, border_value, 1));
@@ -806,4 +806,33 @@ TYPED_TEST(Morphology, ErodeOversizeImage) {
                 src, sizeof(TypeParam), dst, sizeof(TypeParam),
                 KLEIDICV_MAX_IMAGE_PIXELS, KLEIDICV_MAX_IMAGE_PIXELS, 1, 1, 1,
                 0, 0, KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, 1));
+}
+
+TEST(MorphologyEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto &[width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    SCOPED_TRACE(::testing::Message()
+                 << width << 'x' << height << ", channels=" << channels);
+    for (bool use_sme : {false, true}) {
+      SCOPED_TRACE(use_sme);
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                (use_sme ? kleidicv_dilate_u8_sme : kleidicv_dilate_u8)(
+                    src, 0, dst, 0, width, height, channels, 3, 3, 1, 1,
+                    KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, 1));
+      EXPECT_EQ(KLEIDICV_ERROR_RANGE,
+                (use_sme ? kleidicv_erode_u8_sme : kleidicv_erode_u8)(
+                    src, 0, dst, 0, width, height, channels, 3, 3, 1, 1,
+                    KLEIDICV_BORDER_TYPE_REPLICATE, nullptr, 1));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
 }

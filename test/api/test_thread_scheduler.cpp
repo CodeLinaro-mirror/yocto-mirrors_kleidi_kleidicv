@@ -45,11 +45,12 @@ TEST(ThreadScheduler, ParallelBatchesPreservesLargeHeight) {
   const kleidicv_thread_multithreading mt{capture_task_count_and_abort,
                                           &capture};
 
-  // A zero-width image needs no backing storage. The scheduler aborts without
-  // invoking the work callback after capturing the requested task count.
+  // A one-pixel-wide image with zero strides reuses the same storage on each
+  // row. The scheduler aborts without invoking the work callback after
+  // capturing the requested task count.
   EXPECT_EQ(
       KLEIDICV_ERROR_CONTEXT_MISMATCH,
-      kleidicv_thread_scale_u8(&src, 0, &dst, 0, 0, height, 1.0, 0.0, mt));
+      kleidicv_thread_scale_u8(&src, 0, &dst, 0, 1, height, 1.0, 0.0, mt));
   EXPECT_EQ(size_t{1}, capture.call_count);
   EXPECT_EQ(height, capture.task_count);
 }

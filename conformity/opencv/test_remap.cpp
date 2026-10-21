@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/imgproc/hal/interface.h"
 #include "tests.h"
@@ -328,9 +329,17 @@ bool test_remap_f32_linear_accuracy(int index,
 }
 #endif
 
+static void empty_remap(const cv::Mat& input, cv::Mat& output) {
+  cv::remap(input, output, cv::Mat(4, 4, CV_32FC1, cv::Scalar(0)),
+            cv::Mat(4, 4, CV_32FC1, cv::Scalar(0)), cv::INTER_LINEAR);
+}
+
 std::vector<test>& remap_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("remap", CV_8UC1, exec_empty_input<empty_remap>),
+      EMPTY_INPUT_TEST("remap", CV_16UC1, exec_empty_input<empty_remap>),
+
     TEST("RemapS16 uint8 Replicate", (test_remap_s16<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_REPLICATE, 0>), (exec_remap_s16<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_REPLICATE, 0>)),
     TEST("RemapS16 uint16 Replicate", (test_remap_s16<uint16_t, CV_16UC1, cv::INTER_NEAREST, cv::BORDER_REPLICATE, 0>), (exec_remap_s16<uint16_t, CV_16UC1, cv::INTER_NEAREST, cv::BORDER_REPLICATE, 0>)),
     TEST("RemapS16 uint8 Constant", (test_remap_s16<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 12321>), (exec_remap_s16<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 12321>)),

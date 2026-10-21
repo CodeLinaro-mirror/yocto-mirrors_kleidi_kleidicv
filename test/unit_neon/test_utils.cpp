@@ -23,11 +23,24 @@ TEST(Utils, CheckImageSizeValid) {
 }
 
 TEST(Utils, CheckImageSizeZero) {
-  EXPECT_EQ(KLEIDICV_OK, check_image_size(0, 0));
-  EXPECT_EQ(KLEIDICV_OK,
-            check_image_size(0, std::numeric_limits<size_t>::max()));
-  EXPECT_EQ(KLEIDICV_OK,
-            check_image_size(std::numeric_limits<size_t>::max(), 0));
+  constexpr size_t kMax = std::numeric_limits<size_t>::max();
+  for (const size_t other : {size_t{0}, size_t{1}, kMax}) {
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, check_image_size(0, other));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, check_image_size(other, 0));
+  }
+}
+
+TEST(Utils, CheckImageSizeChannels) {
+  for (size_t channels = 1; channels <= KLEIDICV_MAXIMUM_CHANNEL_COUNT;
+       ++channels) {
+    EXPECT_EQ(KLEIDICV_OK, check_image_size(640, 480, channels));
+    EXPECT_EQ(KLEIDICV_OK,
+              check_image_size(KLEIDICV_MAX_IMAGE_PIXELS, 1, channels));
+  }
+  for (size_t channels : {size_t{0}, size_t{KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+                          std::numeric_limits<size_t>::max()}) {
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, check_image_size(1, 1, channels));
+  }
 }
 
 TEST(Utils, CheckImageSizeOversize) {

@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "empty_input.h"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/imgproc/hal/interface.h"
 #include "utils.h"
@@ -85,9 +86,16 @@ bool test_warp_perspective(int index, RecreatedMessageQueue& request_queue,
 }
 #endif
 
+static void empty_warp_perspective(const cv::Mat& input, cv::Mat& output) {
+  cv::warpPerspective(input, output, cv::Mat::eye(3, 3, CV_64F),
+                      cv::Size(4, 4));
+}
+
 std::vector<test>& warp_perspective_tests_get() {
   // clang-format off
   static std::vector<test> tests = {
+      EMPTY_INPUT_TEST("warp_perspective", CV_8UC1, exec_empty_input<empty_warp_perspective>),
+
     TEST("WarpPerspectiveNearest uint8 replicate", (test_warp_perspective<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_REPLICATE, 0, 0>), (exec_warp_perspective<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_REPLICATE, 0, 0>)),
     TEST("WarpPerspectiveLinear uint8 replicate", (test_warp_perspective<uint8_t, CV_8UC1, cv::INTER_LINEAR, cv::BORDER_REPLICATE, 0, 0>), (exec_warp_perspective<uint8_t, CV_8UC1, cv::INTER_LINEAR, cv::BORDER_REPLICATE, 0, 0>)),
     TEST("WarpPerspectiveNearest uint8 constant", (test_warp_perspective<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 200000, 0>), (exec_warp_perspective<uint8_t, CV_8UC1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 200000, 0>)),

@@ -125,12 +125,14 @@ TYPED_TEST(BitwiseAnd, Misalignment) {
 
 TYPED_TEST(BitwiseAnd, ZeroImageSize) {
   TypeParam src[1] = {}, dst[1];
-  EXPECT_EQ(KLEIDICV_OK, bitwise_and<TypeParam>()(src, sizeof(TypeParam), src,
-                                                  sizeof(TypeParam), dst,
-                                                  sizeof(TypeParam), 0, 1));
-  EXPECT_EQ(KLEIDICV_OK, bitwise_and<TypeParam>()(src, sizeof(TypeParam), src,
-                                                  sizeof(TypeParam), dst,
-                                                  sizeof(TypeParam), 1, 0));
+  EXPECT_EQ(
+      KLEIDICV_ERROR_RANGE,
+      bitwise_and<TypeParam>()(src, sizeof(TypeParam), src, sizeof(TypeParam),
+                               dst, sizeof(TypeParam), 0, 1));
+  EXPECT_EQ(
+      KLEIDICV_ERROR_RANGE,
+      bitwise_and<TypeParam>()(src, sizeof(TypeParam), src, sizeof(TypeParam),
+                               dst, sizeof(TypeParam), 1, 0));
 }
 
 TYPED_TEST(BitwiseAnd, OversizeImage) {

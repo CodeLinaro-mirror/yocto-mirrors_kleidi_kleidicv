@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <vector>
 
 #include "framework/array.h"
@@ -206,7 +207,7 @@ TYPED_TEST(MedianBlurTest, ValidInputCombinations) {
 TYPED_TEST(MedianBlurTest, ChannelNumber) {
   test::Array2D<TypeParam> src{25, 25, 0, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1};
   test::Array2D<TypeParam> dst{25, 25, 0, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1};
-  EXPECT_EQ(KLEIDICV_ERROR_NOT_IMPLEMENTED,
+  EXPECT_EQ(KLEIDICV_ERROR_RANGE,
             median_blur<TypeParam>()(src.data(), src.stride(), dst.data(),
                                      dst.stride(), 25, 25,
                                      KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1, 5, 5,
@@ -396,4 +397,30 @@ TYPED_TEST(MedianBlurMidAndLargeRangeTest, MaxFilterSize) {
   size_t filter_size = 255;
   this->run_test_case({2 * filter_size + 2, 0, 0, filter_size, 1, filter_size,
                        KLEIDICV_BORDER_TYPE_REPLICATE});
+}
+
+TEST(MedianBlurEmptyInput, RejectsInvalidImageWithoutWriting) {
+  const uint8_t src[] = {7};
+  uint8_t dst[] = {42};
+  for (const auto& [width, height, channels] :
+       {std::array<size_t, 3>{0, 0, 1},
+        {0, 8, 1},
+        {8, 0, 1},
+        {8, 8, 0},
+        {8, 8, KLEIDICV_MAXIMUM_CHANNEL_COUNT + 1},
+        {8, 8, SIZE_MAX},
+        {0, SIZE_MAX, 1},
+        {SIZE_MAX, 0, 1}}) {
+    SCOPED_TRACE(::testing::Message()
+                 << width << 'x' << height << ", channels=" << channels);
+    for (bool use_sme : {false, true}) {
+      SCOPED_TRACE(use_sme);
+      EXPECT_EQ(
+          KLEIDICV_ERROR_RANGE,
+          (use_sme ? kleidicv_median_blur_u8_sme : kleidicv_median_blur_u8)(
+              src, 0, dst, 0, width, height, channels, 3, 3,
+              KLEIDICV_BORDER_TYPE_REPLICATE));
+      EXPECT_EQ(42, dst[0]);
+    }
+  }
 }

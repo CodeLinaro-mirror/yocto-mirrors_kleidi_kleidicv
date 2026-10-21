@@ -132,11 +132,11 @@ class YUV420p2RGBTest : public testing::Test {
     test::test_null_args(impl, src.data(), src.stride(), dst.data(),
                          dst.stride(), dst.width(), dst.height(), color_format);
 
-    EXPECT_EQ(KLEIDICV_OK, impl(src.data(), src.stride(), dst.data(),
-                                dst.stride(), 0, 1, color_format));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, impl(src.data(), src.stride(), dst.data(),
+                                         dst.stride(), 0, 1, color_format));
 
-    EXPECT_EQ(KLEIDICV_OK, impl(src.data(), src.stride(), dst.data(),
-                                dst.stride(), 1, 0, color_format));
+    EXPECT_EQ(KLEIDICV_ERROR_RANGE, impl(src.data(), src.stride(), dst.data(),
+                                         dst.stride(), 1, 0, color_format));
 
     EXPECT_EQ(KLEIDICV_ERROR_RANGE,
               impl(src.data(), src.stride(), dst.data(), dst.stride(),

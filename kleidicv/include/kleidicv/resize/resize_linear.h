@@ -21,13 +21,15 @@ inline kleidicv_error_t resize_linear_u8_validate(
   if (src_width > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT ||
       src_height > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT ||
       dst_width > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT ||
-      dst_height > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT || channels == 0) {
+      dst_height > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 
-  const bool is_empty = src_width == 0 || src_height == 0;
-  const bool is_half_downscale = src_width == 2 * dst_width &&
-                                 src_height == 2 * dst_height && channels <= 4;
+  CHECK_IMAGE_SIZE(src_width, src_height, channels);
+  CHECK_IMAGE_SIZE(dst_width, dst_height);
+
+  const bool is_half_downscale =
+      src_width == 2 * dst_width && src_height == 2 * dst_height;
 
   const std::array<size_t, 2> implemented_ratios = {2, 4};
   const bool is_fixed_upscale =
@@ -39,21 +41,20 @@ inline kleidicv_error_t resize_linear_u8_validate(
 
   // Generic upscaling needs a minimum width for vector operations.
   const bool is_generic_upscale =
-      channels <= 4 && dst_width >= src_width && src_width * channels >= 16;
+      dst_width >= src_width && src_width * channels >= 16;
 
   // Generic downscaling supports horizontal ratios from 1/3 to 1/1. The
   // required source width depends on the selected vector path.
-  const bool is_generic_downscale_shape =
-      channels <= 4 && dst_width * 3 >= src_width && dst_width < src_width &&
-      dst_width * channels >= 8;
+  const bool is_generic_downscale_shape = dst_width * 3 >= src_width &&
+                                          dst_width < src_width &&
+                                          dst_width * channels >= 8;
   const bool uses_two_vectors = dst_width * 2 >= src_width && channels != 3;
   const bool is_generic_downscale =
       is_generic_downscale_shape &&
       src_width * channels >= (uses_two_vectors ? 16 : 32);
 
-  const bool is_implemented = is_empty || is_half_downscale ||
-                              is_fixed_upscale || is_generic_upscale ||
-                              is_generic_downscale;
+  const bool is_implemented = is_half_downscale || is_fixed_upscale ||
+                              is_generic_upscale || is_generic_downscale;
 
   if (!is_implemented) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
@@ -93,7 +94,13 @@ inline kleidicv_error_t resize_linear_f32_validate(
   if (src_width > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT ||
       src_height > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT ||
       dst_width > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT ||
-      dst_height > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT || channels != 1) {
+      dst_height > KLEIDICV_RESIZE_MAX_WIDTH_OR_HEIGHT) {
+    return KLEIDICV_ERROR_NOT_IMPLEMENTED;
+  }
+
+  CHECK_IMAGE_SIZE(src_width, src_height, channels);
+  CHECK_IMAGE_SIZE(dst_width, dst_height);
+  if (channels != 1) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 
@@ -103,7 +110,7 @@ inline kleidicv_error_t resize_linear_f32_validate(
         return src_width * ratio == dst_width &&
                src_height * ratio == dst_height;
       });
-  if (src_width != 0 && src_height != 0 && !has_implemented_ratio) {
+  if (!has_implemented_ratio) {
     return KLEIDICV_ERROR_NOT_IMPLEMENTED;
   }
 

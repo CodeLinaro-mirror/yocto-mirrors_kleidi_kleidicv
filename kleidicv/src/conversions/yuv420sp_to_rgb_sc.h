@@ -90,10 +90,6 @@ static kleidicv_error_t yuv420sp_to_rgb_u8_sc(
     size_t src_uv_stride, uint8_t *dst, size_t dst_stride, size_t width,
     size_t height,
     kleidicv_color_conversion_t color_format) KLEIDICV_STREAMING {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (kleidicv_error_t err = yuv420sp_to_rgb_validate(src_y, src_uv, dst, width,
                                                       height, color_format)) {
     return err;

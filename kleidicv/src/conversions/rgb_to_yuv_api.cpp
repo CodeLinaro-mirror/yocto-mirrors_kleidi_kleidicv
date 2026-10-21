@@ -30,10 +30,6 @@ kleidicv_error_t rgb_to_yuv_u8(const uint8_t *src, size_t src_stride,
                                uint8_t *dst, size_t dst_stride, size_t width,
                                size_t height,
                                kleidicv_color_conversion_t color_format) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   const size_t base_format = static_cast<size_t>(
       color_format & KLEIDICV_COLOR_CONVERSION_YUV_FMT_MASK);
   switch (base_format) {
@@ -87,10 +83,6 @@ kleidicv_error_t rgb_to_yuv_semiplanar_u8(
     const uint8_t *src, size_t src_stride, uint8_t *y_dst, size_t y_stride,
     uint8_t *uv_dst, size_t uv_stride, size_t width, size_t height,
     kleidicv_color_conversion_t color_format) {
-  if (width == 0 || height == 0) {
-    return KLEIDICV_OK;
-  }
-
   if (kleidicv_error_t err = rgb_to_yuv420sp_validate(src, y_dst, uv_dst, width,
                                                       height, color_format)) {
     return err;

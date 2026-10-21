@@ -215,14 +215,15 @@ inline FixedBorderTypeValidationResult median_blur_validate(
   }
 
   if (kleidicv_error_t check_error =
-          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height)) {
+          KLEIDICV_TARGET_NAMESPACE::check_image_size(width, height,
+                                                      channels)) {
     return {check_error, FixedBorderType{}};
   }
 
   auto fixed_border_type = kleidicv::get_fixed_border_type(border_type);
 
-  if ((src != dst) && (channels <= KLEIDICV_MAXIMUM_CHANNEL_COUNT) &&
-      (height >= kernel_height - 1) && (width >= kernel_width - 1) &&
+  if ((src != dst) && (height >= kernel_height - 1) &&
+      (width >= kernel_width - 1) &&
       is_kernel_size_supported<T>(kernel_width, kernel_height) &&
       fixed_border_type.has_value()) {
     return {KLEIDICV_OK, *fixed_border_type};
