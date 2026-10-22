@@ -21,7 +21,7 @@ SME_BUILD_PATH="build/${BUILD_ID}/sme-only"
 BUILD_PATH="${SME_BUILD_PATH}" \
 CMAKE_CXX_FLAGS="--target=aarch64-linux-gnu -fprofile-instr-generate -fcoverage-mapping" \
 CMAKE_EXE_LINKER_FLAGS="--rtlib=compiler-rt --unwindlib=libunwind -static -fuse-ld=lld -fprofile-instr-generate" \
-EXTRA_CMAKE_ARGS="-DKLEIDICV_ENABLE_SVE2=OFF -DKLEIDICV_ENABLE_SME=ON -DKLEIDICV_ENABLE_SME2=OFF" \
+EXTRA_CMAKE_ARGS="-DKLEIDICV_ENABLE_SVE2=ON -DKLEIDICV_LIMIT_SVE2_TO_SELECTED_ALGORITHMS=OFF -DKLEIDICV_ENABLE_SME=ON -DKLEIDICV_ENABLE_SME2=OFF" \
 ./scripts/build.sh kleidicv-api-test
 
 # Clean any coverage results from previous runs
@@ -45,7 +45,7 @@ LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/unit-neon-%p.profraw" qemu-aarch64 -cpu c
 PIDS+=("$!")
 LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/unit-thread-%p.profraw" qemu-aarch64 ${TEST_DIR}/unit_thread/kleidicv-thread-unit-test &
 PIDS+=("$!")
-LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/api-sve128-%p.profraw" qemu-aarch64 -cpu max,sve128=on,sme=off ${TEST_DIR}/api/kleidicv-api-test --vector-length=16 &
+LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/api-sve128-%p.profraw" KLEIDICV_PREFER_SME_BACKEND=ON qemu-aarch64 -cpu max,sve128=on,sme=off ${TEST_DIR}/api/kleidicv-api-test --vector-length=16 &
 PIDS+=("$!")
 LLVM_PROFILE_FILE="${LLVM_PROFILE_DIR}/api-sve2048-%p.profraw" qemu-aarch64 -cpu max,sve2048=on,sve-default-vector-length=256,sme=off \
   ${TEST_DIR}/api/kleidicv-api-test --gtest_filter="${LONG_VECTOR_TESTS}" --vector-length=256 &
