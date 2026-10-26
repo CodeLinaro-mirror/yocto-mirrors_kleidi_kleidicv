@@ -194,14 +194,6 @@ kleidicv_error_t yuv420sp_to_rgb_u8(const uint8_t *src_y, size_t src_y_stride,
 
 }  // namespace sme
 
-namespace sme2 {
-
-kleidicv_error_t yuv420p_to_rgb_stripe_u8(
-    const uint8_t *src, size_t src_stride, uint8_t *dst, size_t dst_stride,
-    size_t width, size_t height, kleidicv_color_conversion_t color_format,
-    size_t begin, size_t end);
-}  // namespace sme2
-
 }  // namespace kleidicv
 
 #endif  // KLEIDICV_CONVERSIONS_YUV_TO_RGB_H
