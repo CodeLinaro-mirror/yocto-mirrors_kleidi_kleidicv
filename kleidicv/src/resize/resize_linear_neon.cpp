@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <cassert>
+#include <cmath>
 
 #include "kleidicv/neon.h"
 #include "kleidicv/resize/resize_linear.h"
@@ -425,21 +426,23 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_2x2_f32(
   dst_stride /= sizeof(float);
 
   auto lerp1d_scalar = [](float near, float far) {
-    return near * 0.75F + far * 0.25F;
+    return std::fma(far, 0.25F, near * 0.75F);
   };
 
   auto lerp1d_vector = [](float32x4_t near, float32x4_t far) {
-    return vmlaq_n_f32(vmulq_n_f32(near, 0.75F), far, 0.25F);
+    return vfmaq_n_f32(vmulq_n_f32(near, 0.75F), far, 0.25F);
   };
 
   auto lerp2d_scalar = [](float near, float mid_a, float mid_b, float far) {
-    return near * 0.5625F + mid_a * 0.1875F + mid_b * 0.1875F + far * 0.0625F;
+    return std::fma(
+        far, 0.0625F,
+        std::fma(mid_b, 0.1875F, std::fma(mid_a, 0.1875F, near * 0.5625F)));
   };
 
   auto lerp2d_vector = [](float32x4_t a, float32x4_t b, float32x4_t c,
                           float32x4_t d) {
-    return vmlaq_n_f32(
-        vmlaq_n_f32(vmlaq_n_f32(vmulq_n_f32(a, 0.5625F), b, 0.1875F), c,
+    return vfmaq_n_f32(
+        vfmaq_n_f32(vfmaq_n_f32(vmulq_n_f32(a, 0.5625F), b, 0.1875F), c,
                     0.1875F),
         d, 0.0625F);
   };
@@ -548,19 +551,20 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_4x4_f32(
   dst_stride /= sizeof(T);
 
   auto lerp1d_scalar = [](T coeff_a, T a, T coeff_b, T b) {
-    return coeff_a * a + coeff_b * b;
+    return std::fma(b, coeff_b, coeff_a * a);
   };
   auto lerp1d_vector = [](T coeff_a, float32x4_t a, T coeff_b, float32x4_t b) {
-    return vmlaq_n_f32(vmulq_n_f32(a, coeff_a), b, coeff_b);
+    return vfmaq_n_f32(vmulq_n_f32(a, coeff_a), b, coeff_b);
   };
   auto lerp2d_scalar = [](T coeff_a, T a, T coeff_b, T b, T coeff_c, T c,
                           T coeff_d, T d) {
-    return coeff_a * a + coeff_b * b + coeff_c * c + coeff_d * d;
+    return std::fma(d, coeff_d,
+                    std::fma(c, coeff_c, std::fma(b, coeff_b, coeff_a * a)));
   };
   auto lerp2d_vector = [](T coeff_a, float32x4_t a, T coeff_b, float32x4_t b,
                           T coeff_c, float32x4_t c, T coeff_d, float32x4_t d) {
-    return vmlaq_n_f32(
-        vmlaq_n_f32(vmlaq_n_f32(vmulq_n_f32(a, coeff_a), b, coeff_b), c,
+    return vfmaq_n_f32(
+        vfmaq_n_f32(vfmaq_n_f32(vmulq_n_f32(a, coeff_a), b, coeff_b), c,
                     coeff_c),
         d, coeff_d);
   };
@@ -616,6 +620,8 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_4x4_f32(
     dst_row3[dr0] = dst_row3[dr1] = lerp1d_scalar(0.125F, s0r, 0.875F, s1r);
 
     // Middle elements
+    const float one_3rd = 0.3333333333333333F;
+    const float two_3rd = 0.6666666666666667F;
     size_t src_x = 0;
     for (; src_x + 4 < src_width; src_x += 4) {
       size_t dst_x = src_x * 4 + 2;
@@ -637,8 +643,6 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_4x4_f32(
           lerp2d_vector(0.046875F, a, 0.078125F, b, 0.328125F, c, 0.546875F, d),
           lerp2d_vector(0.015625F, a, 0.109375F, b, 0.109375F, c, 0.765625F, d),
       };
-      const float one_3rd = 0.3333333333333333F;
-      const float two_3rd = 0.6666666666666667F;
       vst4q_f32(dst_row0 + dst_x, dst_a);
       vst4q_f32(dst_row1 + dst_x,
                 (float32x4x4_t{
@@ -670,22 +674,6 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_4x4_f32(
           lerp2d_scalar(0.328125F, a, 0.546875F, b, 0.046875F, c, 0.078125F, d);
       dst_row0[dst_x + 3] =
           lerp2d_scalar(0.109375F, a, 0.765625F, b, 0.015625F, c, 0.109375F, d);
-      dst_row1[dst_x + 0] =
-          lerp2d_scalar(0.546875F, a, 0.078125F, b, 0.328125F, c, 0.046875F, d);
-      dst_row1[dst_x + 1] =
-          lerp2d_scalar(0.390625F, a, 0.234375F, b, 0.234375F, c, 0.140625F, d);
-      dst_row1[dst_x + 2] =
-          lerp2d_scalar(0.234375F, a, 0.390625F, b, 0.140625F, c, 0.234375F, d);
-      dst_row1[dst_x + 3] =
-          lerp2d_scalar(0.078125F, a, 0.546875F, b, 0.046875F, c, 0.328125F, d);
-      dst_row2[dst_x + 0] =
-          lerp2d_scalar(0.328125F, a, 0.046875F, b, 0.546875F, c, 0.078125F, d);
-      dst_row2[dst_x + 1] =
-          lerp2d_scalar(0.234375F, a, 0.140625F, b, 0.390625F, c, 0.234375F, d);
-      dst_row2[dst_x + 2] =
-          lerp2d_scalar(0.140625F, a, 0.234375F, b, 0.234375F, c, 0.390625F, d);
-      dst_row2[dst_x + 3] =
-          lerp2d_scalar(0.046875F, a, 0.328125F, b, 0.078125F, c, 0.546875F, d);
       dst_row3[dst_x + 0] =
           lerp2d_scalar(0.109375F, a, 0.015625F, b, 0.765625F, c, 0.109375F, d);
       dst_row3[dst_x + 1] =
@@ -694,6 +682,23 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_4x4_f32(
           lerp2d_scalar(0.046875F, a, 0.078125F, b, 0.328125F, c, 0.546875F, d);
       dst_row3[dst_x + 3] =
           lerp2d_scalar(0.015625F, a, 0.109375F, b, 0.109375F, c, 0.765625F, d);
+
+      dst_row1[dst_x + 0] = lerp1d_scalar(two_3rd, dst_row0[dst_x + 0], one_3rd,
+                                          dst_row3[dst_x + 0]);
+      dst_row1[dst_x + 1] = lerp1d_scalar(two_3rd, dst_row0[dst_x + 1], one_3rd,
+                                          dst_row3[dst_x + 1]);
+      dst_row1[dst_x + 2] = lerp1d_scalar(two_3rd, dst_row0[dst_x + 2], one_3rd,
+                                          dst_row3[dst_x + 2]);
+      dst_row1[dst_x + 3] = lerp1d_scalar(two_3rd, dst_row0[dst_x + 3], one_3rd,
+                                          dst_row3[dst_x + 3]);
+      dst_row2[dst_x + 0] = lerp1d_scalar(one_3rd, dst_row0[dst_x + 0], two_3rd,
+                                          dst_row3[dst_x + 0]);
+      dst_row2[dst_x + 1] = lerp1d_scalar(one_3rd, dst_row0[dst_x + 1], two_3rd,
+                                          dst_row3[dst_x + 1]);
+      dst_row2[dst_x + 2] = lerp1d_scalar(one_3rd, dst_row0[dst_x + 2], two_3rd,
+                                          dst_row3[dst_x + 2]);
+      dst_row2[dst_x + 3] = lerp1d_scalar(one_3rd, dst_row0[dst_x + 3], two_3rd,
+                                          dst_row3[dst_x + 3]);
     }
   };
 
@@ -745,16 +750,12 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32(
   float32x4_t coeffs_b1 = vld1q_f32(&coeffs_b[4]);
 
   auto lerp1d_vector_n = [](float p, float32x4_t a, float q, float32x4_t b) {
-    return vmlaq_n_f32(vmulq_n_f32(a, p), b, q);
-  };
-
-  auto lerp1d_vector_n2 = [](float32x4_t a, float q, float32x4_t b) {
-    return vmlaq_n_f32(a, b, q);
+    return vfmaq_n_f32(vmulq_n_f32(a, p), b, q);
   };
 
   auto lerp1d_vector = [](float32x4_t p, float32x4_t a, float32x4_t q,
                           float32x4_t b) {
-    return vmlaq_f32(vmulq_f32(a, p), b, q);
+    return vfmaq_f32(vmulq_f32(a, p), b, q);
   };
 
   // Handle top or bottom edge
@@ -818,12 +819,12 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32(
   auto lerp2d_vector = [](float32x4_t a, float32x4_t p, float32x4_t b,
                           float32x4_t q, float32x4_t c, float32x4_t r,
                           float32x4_t d, float32x4_t s) {
-    return vmlaq_f32(vmlaq_f32(vmlaq_f32(vmulq_f32(a, p), b, q), c, r), d, s);
+    return vfmaq_f32(vfmaq_f32(vfmaq_f32(vmulq_f32(a, p), b, q), c, r), d, s);
   };
 
-  auto process_row = [src_width, lerp2d_vector, lerp1d_vector_n,
-                      lerp1d_vector_n2, &coeffs_p0, &coeffs_q0, &coeffs_r0,
-                      &coeffs_s0, &coeffs_p1, &coeffs_q1, &coeffs_r1,
+  auto process_row = [src_width, lerp2d_vector, lerp1d_vector_n, &coeffs_p0,
+                      &coeffs_q0, &coeffs_r0, &coeffs_s0, &coeffs_p1,
+                      &coeffs_q1, &coeffs_r1,
                       &coeffs_s1](const float *src_row0, const float *src_row1,
                                   float *dst_row0, size_t dst_stride) {
     // Left elements
@@ -875,32 +876,42 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32(
           lerp2d_vector(coeffs_r1, a, coeffs_s1, b, coeffs_p1, c, coeffs_q1, d);
 
       neon::VecTraits<float>::store(dst_7, dst_row7);
-      float32x4_t delta07_0 = vsubq_f32(dst_7.val[0], dst_0.val[0]);
-      float32x4_t delta07_1 = vsubq_f32(dst_7.val[1], dst_0.val[1]);
 
       float32x4x2_t dst;
-      dst.val[0] = lerp1d_vector_n2(dst_0.val[0], 1.0 / 7, delta07_0);
-      dst.val[1] = lerp1d_vector_n2(dst_0.val[1], 1.0 / 7, delta07_1);
+      dst.val[0] =
+          lerp1d_vector_n(6.0 / 7, dst_0.val[0], 1.0 / 7, dst_7.val[0]);
+      dst.val[1] =
+          lerp1d_vector_n(6.0 / 7, dst_0.val[1], 1.0 / 7, dst_7.val[1]);
 
       neon::VecTraits<float>::store(dst, dst_row1);
-      dst.val[0] = lerp1d_vector_n2(dst_0.val[0], 2.0 / 7, delta07_0);
-      dst.val[1] = lerp1d_vector_n2(dst_0.val[1], 2.0 / 7, delta07_1);
+      dst.val[0] =
+          lerp1d_vector_n(5.0 / 7, dst_0.val[0], 2.0 / 7, dst_7.val[0]);
+      dst.val[1] =
+          lerp1d_vector_n(5.0 / 7, dst_0.val[1], 2.0 / 7, dst_7.val[1]);
 
       neon::VecTraits<float>::store(dst, dst_row2);
-      dst.val[0] = lerp1d_vector_n2(dst_0.val[0], 3.0 / 7, delta07_0);
-      dst.val[1] = lerp1d_vector_n2(dst_0.val[1], 3.0 / 7, delta07_1);
+      dst.val[0] =
+          lerp1d_vector_n(4.0 / 7, dst_0.val[0], 3.0 / 7, dst_7.val[0]);
+      dst.val[1] =
+          lerp1d_vector_n(4.0 / 7, dst_0.val[1], 3.0 / 7, dst_7.val[1]);
 
       neon::VecTraits<float>::store(dst, dst_row3);
-      dst.val[0] = lerp1d_vector_n2(dst_0.val[0], 4.0 / 7, delta07_0);
-      dst.val[1] = lerp1d_vector_n2(dst_0.val[1], 4.0 / 7, delta07_1);
+      dst.val[0] =
+          lerp1d_vector_n(3.0 / 7, dst_0.val[0], 4.0 / 7, dst_7.val[0]);
+      dst.val[1] =
+          lerp1d_vector_n(3.0 / 7, dst_0.val[1], 4.0 / 7, dst_7.val[1]);
 
       neon::VecTraits<float>::store(dst, dst_row4);
-      dst.val[0] = lerp1d_vector_n2(dst_0.val[0], 5.0 / 7, delta07_0);
-      dst.val[1] = lerp1d_vector_n2(dst_0.val[1], 5.0 / 7, delta07_1);
+      dst.val[0] =
+          lerp1d_vector_n(2.0 / 7, dst_0.val[0], 5.0 / 7, dst_7.val[0]);
+      dst.val[1] =
+          lerp1d_vector_n(2.0 / 7, dst_0.val[1], 5.0 / 7, dst_7.val[1]);
 
       neon::VecTraits<float>::store(dst, dst_row5);
-      dst.val[0] = lerp1d_vector_n2(dst_0.val[0], 6.0 / 7, delta07_0);
-      dst.val[1] = lerp1d_vector_n2(dst_0.val[1], 6.0 / 7, delta07_1);
+      dst.val[0] =
+          lerp1d_vector_n(1.0 / 7, dst_0.val[0], 6.0 / 7, dst_7.val[0]);
+      dst.val[1] =
+          lerp1d_vector_n(1.0 / 7, dst_0.val[1], 6.0 / 7, dst_7.val[1]);
 
       neon::VecTraits<float>::store(dst, dst_row6);
       dst_row0 += 8;

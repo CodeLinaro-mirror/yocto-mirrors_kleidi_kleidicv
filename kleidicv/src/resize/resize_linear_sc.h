@@ -992,6 +992,9 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32_sve256plus_sc(
                          std::reference_wrapper<svuint32_t> indices[8],
                          std::reference_wrapper<svfloat32_t>
                              coeffs_pqrs[4]) KLEIDICV_STREAMING {
+    std::reference_wrapper<svfloat32_t> coeffs_rspq[4] = {
+        coeffs_pqrs[2], coeffs_pqrs[3], coeffs_pqrs[0], coeffs_pqrs[1]};
+
     // Left edge
     svbool_t pg1 = svptrue_pat_b32(SV_VL1);  // read 1 element
     svbool_t pg4 = svptrue_pat_b32(SV_VL4);  // write 4 elements
@@ -1032,7 +1035,7 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32_sve256plus_sc(
                                            coeffs_pqrs, src_0, src_1);
       svst1(pg_1, dst_row0, dst_0);
       svfloat32_t dst_7 = index_and_lerp2d(pg_1, indices[0], indices[1],
-                                           coeffs_pqrs, src_1, src_0);
+                                           coeffs_rspq, src_0, src_1);
       svst1(pg_1, dst_row7, dst_7);
       svst1(pg_1, dst_row1,
             lerp1d_vector(pg_1, 6.0 / 7, dst_0, 1.0 / 7, dst_7));
@@ -1050,8 +1053,8 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32_sve256plus_sc(
       dst_0 = index_and_lerp2d(pg_2, indices[2], indices[3], coeffs_pqrs, src_0,
                                src_1);
       svst1_vnum(pg_2, dst_row0, 1, dst_0);
-      dst_7 = index_and_lerp2d(pg_2, indices[2], indices[3], coeffs_pqrs, src_1,
-                               src_0);
+      dst_7 = index_and_lerp2d(pg_2, indices[2], indices[3], coeffs_rspq, src_0,
+                               src_1);
       svst1_vnum(pg_2, dst_row7, 1, dst_7);
       svst1_vnum(pg_2, dst_row1, 1,
                  lerp1d_vector(pg_2, 6.0 / 7, dst_0, 1.0 / 7, dst_7));
@@ -1069,8 +1072,8 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32_sve256plus_sc(
       dst_0 = index_and_lerp2d(pg_3, indices[4], indices[5], coeffs_pqrs, src_0,
                                src_1);
       svst1_vnum(pg_3, dst_row0, 2, dst_0);
-      dst_7 = index_and_lerp2d(pg_3, indices[4], indices[5], coeffs_pqrs, src_1,
-                               src_0);
+      dst_7 = index_and_lerp2d(pg_3, indices[4], indices[5], coeffs_rspq, src_0,
+                               src_1);
       svst1_vnum(pg_3, dst_row7, 2, dst_7);
       svst1_vnum(pg_3, dst_row1, 2,
                  lerp1d_vector(pg_3, 6.0 / 7, dst_0, 1.0 / 7, dst_7));
@@ -1088,8 +1091,8 @@ KLEIDICV_TARGET_FN_ATTRS static kleidicv_error_t resize_8x8_f32_sve256plus_sc(
       dst_0 = index_and_lerp2d(pg_4, indices[6], indices[7], coeffs_pqrs, src_0,
                                src_1);
       svst1_vnum(pg_4, dst_row0, 3, dst_0);
-      dst_7 = index_and_lerp2d(pg_4, indices[6], indices[7], coeffs_pqrs, src_1,
-                               src_0);
+      dst_7 = index_and_lerp2d(pg_4, indices[6], indices[7], coeffs_rspq, src_0,
+                               src_1);
       svst1_vnum(pg_4, dst_row7, 3, dst_7);
       svst1_vnum(pg_4, dst_row1, 3,
                  lerp1d_vector(pg_4, 6.0 / 7, dst_0, 1.0 / 7, dst_7));
