@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2024 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -23,6 +23,34 @@ kleidicv_error_t u8_to_f32(const uint8_t *src, size_t src_stride, float *dst,
                            size_t dst_stride, size_t width, size_t height);
 
 }  // namespace neon
+
+namespace sve2 {
+
+template <typename InputType, typename OutputType>
+kleidicv_error_t float_conversion(const InputType *src, size_t src_stride,
+                                  OutputType *dst, size_t dst_stride,
+                                  size_t width, size_t height);
+
+}  // namespace sve2
+
+namespace sme {
+
+template <typename InputType, typename OutputType>
+kleidicv_error_t float_conversion(const InputType *src, size_t src_stride,
+                                  OutputType *dst, size_t dst_stride,
+                                  size_t width, size_t height);
+
+}  // namespace sme
+
+namespace sme2 {
+
+template <typename InputType, typename OutputType>
+kleidicv_error_t float_conversion(const InputType *src, size_t src_stride,
+                                  OutputType *dst, size_t dst_stride,
+                                  size_t width, size_t height);
+
+}  // namespace sme2
+
 }  // namespace kleidicv
 
 #endif  // KLEIDICV_FLOAT_CONVERSION_H

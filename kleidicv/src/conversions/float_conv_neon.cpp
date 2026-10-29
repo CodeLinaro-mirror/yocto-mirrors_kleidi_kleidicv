@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cfenv>
 #include <cmath>
 
 #include "kleidicv/conversions/float_conversion.h"
@@ -10,11 +11,11 @@
 
 namespace kleidicv::neon {
 
-template <typename InputType, typename OutputType>
+template <typename InputType, typename OutputType, bool RoundToNearestEven>
 class float_conversion_operation;
 
-template <typename OutputType>
-class float_conversion_operation<float, OutputType> {
+template <typename OutputType, bool RoundToNearestEven>
+class float_conversion_operation<float, OutputType, RoundToNearestEven> {
  public:
   using SrcVecTraits = KLEIDICV_TARGET_NAMESPACE::VecTraits<float>;
   using SrcVectorType = typename SrcVecTraits::VectorType;
@@ -57,18 +58,24 @@ class float_conversion_operation<float, OutputType> {
       typename O,
       std::enable_if_t<std::is_integral_v<O> && std::is_signed_v<O>, int> = 0>
   IntermediateVectorType vector_path(SrcVectorType src) {
-    IntermediateVectorType result = vcvtnq_s32_f32(src);
-    return result;
+    if constexpr (RoundToNearestEven) {
+      return vcvtnq_s32_f32(src);
+    } else {
+      return vcvtq_s32_f32(vrndiq_f32(src));
+    }
   }
 
   template <
       typename O,
       std::enable_if_t<std::is_integral_v<O> && !std::is_signed_v<O>, int> = 0>
   IntermediateVectorType vector_path(SrcVectorType src) {
-    IntermediateVectorType result = vcvtnq_u32_f32(src);
-    return result;
+    if constexpr (RoundToNearestEven) {
+      return vcvtnq_u32_f32(src);
+    } else {
+      return vcvtq_u32_f32(vrndiq_f32(src));
+    }
   }
-};  // end of class float_conversion_operation<float, OutputType>
+};  // end of class float_conversion_operation
 
 template <typename InputType, typename OutputType>
 kleidicv_error_t float_conversion(const InputType* src, size_t src_stride,
@@ -79,11 +86,17 @@ kleidicv_error_t float_conversion(const InputType* src, size_t src_stride,
     return err;
   }
 
-  float_conversion_operation<InputType, OutputType> operation;
   Rectangle rect{width, height};
   Rows<const InputType> src_rows{src, src_stride};
   Rows<OutputType> dst_rows{dst, dst_stride};
-  zip_rows(operation, rect, src_rows, dst_rows);
+  // Keep the single-instruction conversion for the default rounding mode.
+  if (std::fegetround() == FE_TONEAREST) {
+    float_conversion_operation<InputType, OutputType, true> operation;
+    zip_rows(operation, rect, src_rows, dst_rows);
+  } else {
+    float_conversion_operation<InputType, OutputType, false> operation;
+    zip_rows(operation, rect, src_rows, dst_rows);
+  }
 
   return KLEIDICV_OK;
 }

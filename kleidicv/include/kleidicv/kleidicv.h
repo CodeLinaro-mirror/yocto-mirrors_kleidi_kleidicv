@@ -1918,6 +1918,8 @@ KLEIDICV_API_DECLARATION(kleidicv_merge, const void **srcs,
 /// Converts the elements in `src` from a floating-point type to an integer
 /// type, then stores the result in `dst`.
 ///
+/// Rounding follows the current floating-point rounding mode.
+///
 /// Each resulting element is saturated, i.e. it is the smallest/largest
 /// number of the type of the element if the `src` data type cannot be
 /// represented as the `dst` type. In case of some special values, such as the

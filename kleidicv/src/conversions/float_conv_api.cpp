@@ -7,37 +7,6 @@
 #include "kleidicv/kleidicv.h"
 #include "kleidicv/types.h"
 
-namespace kleidicv {
-
-namespace sve2 {
-
-template <typename InputType, typename OutputType>
-kleidicv_error_t float_conversion(const InputType* src, size_t src_stride,
-                                  OutputType* dst, size_t dst_stride,
-                                  size_t width, size_t height);
-
-}  // namespace sve2
-
-namespace sme {
-
-template <typename InputType, typename OutputType>
-kleidicv_error_t float_conversion(const InputType* src, size_t src_stride,
-                                  OutputType* dst, size_t dst_stride,
-                                  size_t width, size_t height);
-
-}  // namespace sme
-
-namespace sme2 {
-
-template <typename InputType, typename OutputType>
-kleidicv_error_t float_conversion(const InputType* src, size_t src_stride,
-                                  OutputType* dst, size_t dst_stride,
-                                  size_t width, size_t height);
-
-}  // namespace sme2
-
-}  // namespace kleidicv
-
 KLEIDICV_MULTIVERSION_C_API_WITH_SME(
     kleidicv_f32_to_s8, &kleidicv::neon::f32_to_s8,
     KLEIDICV_SVE2_IMPL_IF((&kleidicv::sve2::float_conversion<float, int8_t>)),

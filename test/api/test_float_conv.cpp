@@ -4,6 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cfenv>
+#include <cmath>
+
 #include "framework/array.h"
 #include "framework/generator.h"
 #include "framework/operation.h"
@@ -223,6 +226,7 @@ class FloatConversionTest final {
         // NOLINTBEGIN(clang-analyzer-core.uninitialized.Assign)
         I result = *source.at(hindex, vindex);
         // NOLINTEND(clang-analyzer-core.uninitialized.Assign)
+        result = std::nearbyint(result);
         if (result > max<O>()) {
           calculated = max<O>();
         } else if (result < lowest<O>()) {
@@ -269,7 +273,7 @@ class FloatConversionTest final {
     test::Array2D<O> actual(width, height, 1, 1);
 
     if constexpr (std::is_same_v<float, I> && std::is_integral_v<O>) {
-      test::GenerateLinearSeries<I> generator(lowest<O>());
+      test::GenerateLinearSeries<I> generator(lowest<O>() - 0.5F);
       source.fill(generator);
     } else if constexpr (std::is_integral_v<I> && std::is_same_v<float, O>) {
       test::GenerateLinearSeries<I> generator(lowest<I>());
@@ -277,8 +281,6 @@ class FloatConversionTest final {
     } else {
       static_assert(sizeof(I) == 0 && sizeof(O) == 0, "should never happen");
     }
-
-    calculate_expected<I, O>(source, expected);
 
     return {source, expected, actual};
   }
@@ -302,11 +304,23 @@ class FloatConversionTest final {
     test::Array2D<O>& expected = std::get<1>(arrays);
     test::Array2D<O>& actual = std::get<2>(arrays);
 
-    ASSERT_EQ(KLEIDICV_OK, (float_conversion<I, O>()(
-                               source.data(), source.stride(), actual.data(),
-                               actual.stride(), width, height)));
+    const auto check_conversion = [&] {
+      calculate_expected<I, O>(source, expected);
+      ASSERT_EQ(KLEIDICV_OK, (float_conversion<I, O>()(
+                                 source.data(), source.stride(), actual.data(),
+                                 actual.stride(), width, height)));
 
-    EXPECT_EQ_ARRAY2D(expected, actual);
+      EXPECT_EQ_ARRAY2D(expected, actual);
+    };
+
+    if constexpr (std::is_same_v<float, I> && std::is_integral_v<O>) {
+      for (int mode : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+        ASSERT_EQ(0, std::fesetround(mode));
+        check_conversion();
+      }
+    } else {
+      check_conversion();
+    }
   }
 
   void test_custom() {
@@ -351,7 +365,18 @@ class FloatConversionTest final {
 };  // end of class FloatConversionTest
 
 template <typename ElementType>
-class FloatConversion : public testing::Test {};
+class FloatConversion : public testing::Test {
+ protected:
+  void TearDown() override {
+    if constexpr (std::is_same_v<float, typename ElementType::first_type> &&
+                  std::is_integral_v<typename ElementType::second_type>) {
+      EXPECT_EQ(0, std::fesetround(original_mode_));
+    }
+  }
+
+ private:
+  int original_mode_ = std::fegetround();
+};
 
 using ElementTypes =
     ::testing::Types<std::pair<float, int8_t>, std::pair<float, uint8_t>,
