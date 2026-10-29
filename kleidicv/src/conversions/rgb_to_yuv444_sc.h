@@ -208,7 +208,8 @@ class RGBAToYUV final : public RGBToYUVBase<BGR>, public UsesTailPath {
     VectorType rb_h = svuzp1_u8(src2, src3);
     VectorType ga_l = svuzp2_u8(src0, src1);
     VectorType ga_h = svuzp2_u8(src2, src3);
-    if (KLEIDICV_UNLIKELY(svcntb() >= 256)) {
+    // The 0xFF lookup index stops zero-filling at 1024 bits.
+    if (KLEIDICV_UNLIKELY(svcntb() >= 128)) {
       svuint8_t r, g, b;
       if constexpr (BGR) {
         b = svuzp1_u8(rb_l, rb_h);

@@ -183,6 +183,44 @@ TEST(RgbToYuv, BGRA_TO_YUV444_VECTOR) {
 
 namespace {
 
+TEST(RgbToYuv, RgbaZeroExtension) {
+  const size_t kVectorLength = test::Options::vector_lanes<uint8_t>();
+  for (auto format : {KLEIDICV_RGBA_TO_YUV444, KLEIDICV_BGRA_TO_YUV444}) {
+    SCOPED_TRACE(format);
+    for (size_t width : {kVectorLength - 1, kVectorLength, kVectorLength + 1}) {
+      SCOPED_TRACE(width);
+      for (size_t padding : {size_t{0}, size_t{7}}) {
+        SCOPED_TRACE(padding);
+        for (uint8_t alpha : {0, 1, 255}) {
+          SCOPED_TRACE(alpha);
+          test::Array2D<uint8_t> src{width * 4, 3, padding};
+          test::Array2D<uint8_t> expected{width * 3, src.height(), padding};
+          test::Array2D<uint8_t> actual{width * 3, src.height(), padding};
+          ASSERT_TRUE(src.valid());
+          ASSERT_TRUE(expected.valid());
+          ASSERT_TRUE(actual.valid());
+          // For all pixels, R, G and B are set to 1, and alpha is set to the
+          // tested value.
+          src.fill([alpha](size_t, size_t column) {
+            return column % 4 == 3 ? alpha : uint8_t{1};
+          });
+          // All destination pixels should be [1, 128, 128], regardless of
+          // alpha.
+          expected.fill([](size_t, size_t column) {
+            return column % 3 == 0 ? uint8_t{1} : uint8_t{128};
+          });
+          actual.fill(42);
+          ASSERT_EQ(KLEIDICV_OK,
+                    kleidicv_rgb_to_yuv_u8(src.data(), src.stride(),
+                                           actual.data(), actual.stride(),
+                                           width, src.height(), format));
+          EXPECT_EQ_ARRAY2D(expected, actual);
+        }
+      }
+    }
+  }
+}
+
 TEST(RgbToYuv, EntryPointsRetainChecks) {
   constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
   uint8_t src = 0;
