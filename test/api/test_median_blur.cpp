@@ -6,6 +6,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstring>
+#include <iterator>
+#include <type_traits>
 #include <vector>
 
 #include "framework/array.h"
@@ -87,7 +91,8 @@ class MedianBlurTest : public testing::Test {
     return tests;
   }
 
-  void run_test_case(const TestParams& params) {
+  void run_test_case(const TestParams& params,
+                     const std::vector<ElementType>& input_values = {}) {
     test::Array2D<ElementType> src{params.width * params.channels,
                                    params.height, params.src_padding,
                                    params.channels};
@@ -97,8 +102,19 @@ class MedianBlurTest : public testing::Test {
                                    params.height, params.dst_padding,
                                    params.channels};
 
-    test::PseudoRandomNumberGenerator<ElementType> input_value_random_range;
-    src.fill(input_value_random_range);
+    if (input_values.empty()) {
+      test::PseudoRandomNumberGenerator<ElementType> generator;
+      src.fill(generator);
+    } else if (input_values.size() == 1) {
+      src.fill(input_values[0]);
+    } else {
+      for (size_t row = 0; row < src.height(); ++row) {
+        for (size_t column = 0; column < src.width(); ++column) {
+          const size_t index = (row + column) % input_values.size();
+          *src.at(row, column) = input_values[index];
+        }
+      }
+    }
 
     calculate_reference(src, expected_dst, params.filter_size,
                         params.border_type);
@@ -109,7 +125,10 @@ class MedianBlurTest : public testing::Test {
         params.border_type);
 
     EXPECT_EQ(KLEIDICV_OK, status);
-    EXPECT_EQ_ARRAY2D(expected_dst, dst);
+    for (size_t row = 0; row < dst.height(); ++row) {
+      EXPECT_EQ(0, std::memcmp(expected_dst.at(row, 0), dst.at(row, 0),
+                               dst.width() * sizeof(ElementType)));
+    }
   }
 
  private:
@@ -183,7 +202,13 @@ class MedianBlurTest : public testing::Test {
             }
           }
 
-          std::sort(window.begin(), window.end());
+          std::sort(window.begin(), window.end(),
+                    [](ElementType left, ElementType right) {
+                      // Order negative zero before positive zero.
+                      return left < right ||
+                             (left == right && std::signbit(left) &&
+                              !std::signbit(right));
+                    });
           dst.set(row, col * dst.channels() + channel,
                   {window[window.size() / 2]});
         }
@@ -200,6 +225,18 @@ TYPED_TEST(MedianBlurTest, ValidInputCombinations) {
   for (auto ksize : {3, 5, 7}) {
     for (const auto& params : TestFixture::get_test_cases(ksize)) {
       this->run_test_case(params);
+      if constexpr (std::is_same_v<TypeParam, float>) {
+        const std::vector<float> kPatterns[] = {
+            {0.0F},
+            {-0.0F},
+            {0.0F, -0.0F},
+            {-0.0F, 0.0F},
+            {-3.0F, -0.0F, 0.0F, 0.0F, -0.0F, 5.0F},
+        };
+        for (size_t pattern = 0; pattern < std::size(kPatterns); ++pattern) {
+          this->run_test_case(params, kPatterns[pattern]);
+        }
+      }
     }
   }
 }

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 - 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: 2023 - 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -73,6 +73,33 @@ class ScalarComparator {
   }
   static ScalarType get_max(ScalarType& left, ScalarType& right, Monostate&) {
     return std::max(left, right);
+  }
+};
+
+template <>
+class ScalarComparator<float> {
+ public:
+  static void compare_and_swap(float& left, float& right, Monostate& ctx) {
+    const float min_value = get_min(left, right, ctx);
+    const float max_value = get_max(left, right, ctx);
+    left = min_value;
+    right = max_value;
+  }
+
+  static void min(float& left, float& right, Monostate& ctx) {
+    left = get_min(left, right, ctx);
+  }
+
+  static void max(float& left, float& right, Monostate& ctx) {
+    right = get_max(left, right, ctx);
+  }
+
+  static float get_min(float& left, float& right, Monostate&) {
+    return vget_lane_f32(vmin_f32(vdup_n_f32(left), vdup_n_f32(right)), 0);
+  }
+
+  static float get_max(float& left, float& right, Monostate&) {
+    return vget_lane_f32(vmax_f32(vdup_n_f32(left), vdup_n_f32(right)), 0);
   }
 };
 
