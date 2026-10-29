@@ -45,7 +45,7 @@ class YuvSpTest final {
   void execute_test(F impl, size_t logical_width,
                     kleidicv_color_conversion_t color_format, size_t padding) {
     test::Array2D<uint8_t> input_y{logical_width, 5, padding};
-    input_y.fill(0);
+    input_y.fill(96);
     input_y.set(0, 0, {10, 20, 255, 199});
     input_y.set(1, 0, {1, 120, 0, 17});
     input_y.set(2, 0, {2, 3, 240, 228});
@@ -54,7 +54,9 @@ class YuvSpTest final {
     // the width of the UV input must be even
     test::Array2D<uint8_t> input_uv{
         KLEIDICV_TARGET_NAMESPACE::align_up(logical_width, 2), 3, padding};
-    input_uv.fill(0);
+    input_uv.fill([](size_t row, size_t column) {
+      return static_cast<uint8_t>(64 + (row * 37 + column * 29) % 128);
+    });
     input_uv.set(0, 0, {100, 130, 255, 255});
     input_uv.set(1, 0, {0, 1, 3, 4});
     input_uv.set(2, 0, {7, 8, 9, 10});

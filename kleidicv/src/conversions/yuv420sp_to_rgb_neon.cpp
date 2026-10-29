@@ -12,8 +12,7 @@
 namespace kleidicv::neon {
 template <bool BGR, bool kAlpha>
 class YUVSpToRGBxOrBGRx final : public YUV420XToRGBxOrBGRx<BGR, kAlpha>,
-                                public UnrollOnce,
-                                public TryToAvoidTailLoop {
+                                public UnrollOnce {
  public:
   using VecTraits = neon::VecTraits<uint8_t>;
   using ScalarType = VecTraits::ScalarType;

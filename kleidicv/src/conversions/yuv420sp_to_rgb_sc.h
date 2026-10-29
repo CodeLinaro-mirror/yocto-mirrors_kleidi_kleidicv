@@ -38,7 +38,10 @@ class YUVSpToRGBxOrBGRx final : public YUV420XToRGBxOrBGRx<BGR, kAlpha> {
     // Load channels: y0 and y1 are two adjacent rows.
     svuint8_t y0 = svld1(pg, y_row_0);
     svuint8_t y1 = svld1(pg, y_row_1);
-    svuint8_t uv = svld1(pg, uv_row);
+    // Load a complete chroma pair for the final pixel of an odd-width row.
+    // Since pg has n consecutive active bits starting at bit 0,
+    // svtrn1_b8(pg, pg) rounds the active byte count up to align_up(n, 2).
+    svuint8_t uv = svld1(svtrn1_b8(pg, pg), uv_row);
     // Widen U and V to 32 bits.
     svint16_t u = svreinterpret_s16(svmovlb(uv));
     svint16_t v = svreinterpret_s16(svmovlt(uv));
