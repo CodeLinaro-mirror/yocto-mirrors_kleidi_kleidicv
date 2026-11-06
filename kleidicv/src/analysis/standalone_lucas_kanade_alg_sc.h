@@ -63,9 +63,9 @@ struct StandaloneLucasKanadeAlg {
     const Lerp_coefficients lerp_coeffs =
         Lerp_coefficients::create(coeff_tl, coeff_tr, coeff_bl, coeff_br);
 
-    svint32_t sum_scharr_xx_v = svdup_n_s32(0),
-              sum_scharr_xy_v = svdup_n_s32(0),
-              sum_scharr_yy_v = svdup_n_s32(0);
+    svint64_t sum_scharr_xx_v = svdup_n_s64(0),
+              sum_scharr_xy_v = svdup_n_s64(0),
+              sum_scharr_yy_v = svdup_n_s64(0);
 
     for (int y = 0; y < window_height; y++) {
       const int16_t *const scharr_row0 =
@@ -119,20 +119,9 @@ struct StandaloneLucasKanadeAlg {
         svst2_s16(pg16, scharr_window_row + index * 2L,
                   svcreate2_s16(scharr_x, scharr_y));
 
-#if KLEIDICV_TARGET_SME2
-        sum_scharr_xx_v = svdot_s32_s16(sum_scharr_xx_v, scharr_x, scharr_x);
-        sum_scharr_xy_v = svdot_s32_s16(sum_scharr_xy_v, scharr_x, scharr_y);
-        sum_scharr_yy_v = svdot_s32_s16(sum_scharr_yy_v, scharr_y, scharr_y);
-#else
-        sum_scharr_xx_v = svmlalb_s32(sum_scharr_xx_v, scharr_x, scharr_x);
-        sum_scharr_xx_v = svmlalt_s32(sum_scharr_xx_v, scharr_x, scharr_x);
-
-        sum_scharr_xy_v = svmlalb_s32(sum_scharr_xy_v, scharr_x, scharr_y);
-        sum_scharr_xy_v = svmlalt_s32(sum_scharr_xy_v, scharr_x, scharr_y);
-
-        sum_scharr_yy_v = svmlalb_s32(sum_scharr_yy_v, scharr_y, scharr_y);
-        sum_scharr_yy_v = svmlalt_s32(sum_scharr_yy_v, scharr_y, scharr_y);
-#endif
+        sum_scharr_xx_v = svdot_s64(sum_scharr_xx_v, scharr_x, scharr_x);
+        sum_scharr_xy_v = svdot_s64(sum_scharr_xy_v, scharr_x, scharr_y);
+        sum_scharr_yy_v = svdot_s64(sum_scharr_yy_v, scharr_y, scharr_y);
       };
 
       loop.unroll_once([&](size_t index) KLEIDICV_STREAMING {
@@ -146,16 +135,13 @@ struct StandaloneLucasKanadeAlg {
       });
     }
     sum_scharr_xx =
-        svaddv_f32(svptrue_b32(),
-                   svcvt_f32_s32_x(svptrue_b32(), sum_scharr_xx_v)) *
+        static_cast<float>(svaddv_s64(svptrue_b64(), sum_scharr_xx_v)) *
         kLucasKanadeAlgFixedPointDescale;
     sum_scharr_xy =
-        svaddv_f32(svptrue_b32(),
-                   svcvt_f32_s32_x(svptrue_b32(), sum_scharr_xy_v)) *
+        static_cast<float>(svaddv_s64(svptrue_b64(), sum_scharr_xy_v)) *
         kLucasKanadeAlgFixedPointDescale;
     sum_scharr_yy =
-        svaddv_f32(svptrue_b32(),
-                   svcvt_f32_s32_x(svptrue_b32(), sum_scharr_yy_v)) *
+        static_cast<float>(svaddv_s64(svptrue_b64(), sum_scharr_yy_v)) *
         kLucasKanadeAlgFixedPointDescale;
   }
 
@@ -169,8 +155,8 @@ struct StandaloneLucasKanadeAlg {
       float &sum_diff_scharr_x, float &sum_diff_scharr_y) KLEIDICV_STREAMING {
     const Lerp_coefficients lerp_coeffs =
         Lerp_coefficients::create(coeff_tl, coeff_tr, coeff_bl, coeff_br);
-    svint32_t sum_diff_scharr_x_v = svdup_n_s32(0),
-              sum_diff_scharr_y_v = svdup_n_s32(0);
+    svint64_t sum_diff_scharr_x_v = svdup_n_s64(0),
+              sum_diff_scharr_y_v = svdup_n_s64(0);
 
     for (int y = 0; y < window_height; y++) {
       const uint8_t *next_row0 =
@@ -202,19 +188,8 @@ struct StandaloneLucasKanadeAlg {
         svint16_t scharr_x = svget2(scharr_xy, 0);
         svint16_t scharr_y = svget2(scharr_xy, 1);
 
-#if KLEIDICV_TARGET_SME2
-        sum_diff_scharr_x_v =
-            svdot_s32_s16(sum_diff_scharr_x_v, scharr_x, diff);
-        sum_diff_scharr_y_v =
-            svdot_s32_s16(sum_diff_scharr_y_v, scharr_y, diff);
-#else
-        sum_diff_scharr_x_v = svmlalb_s32(sum_diff_scharr_x_v, scharr_x, diff);
-        sum_diff_scharr_x_v = svmlalt_s32(sum_diff_scharr_x_v, scharr_x, diff);
-
-        sum_diff_scharr_y_v = svmlalb_s32(sum_diff_scharr_y_v, scharr_y, diff);
-        sum_diff_scharr_y_v = svmlalt_s32(sum_diff_scharr_y_v, scharr_y, diff);
-
-#endif
+        sum_diff_scharr_x_v = svdot_s64(sum_diff_scharr_x_v, scharr_x, diff);
+        sum_diff_scharr_y_v = svdot_s64(sum_diff_scharr_y_v, scharr_y, diff);
       };
 
       loop.unroll_once([&](size_t index) KLEIDICV_STREAMING {
@@ -228,12 +203,10 @@ struct StandaloneLucasKanadeAlg {
       });
     }
     sum_diff_scharr_x =
-        svaddv_f32(svptrue_b32(),
-                   svcvt_f32_s32_x(svptrue_b32(), sum_diff_scharr_x_v)) *
+        static_cast<float>(svaddv_s64(svptrue_b64(), sum_diff_scharr_x_v)) *
         kLucasKanadeAlgFixedPointDescale;
     sum_diff_scharr_y =
-        svaddv_f32(svptrue_b32(),
-                   svcvt_f32_s32_x(svptrue_b32(), sum_diff_scharr_y_v)) *
+        static_cast<float>(svaddv_s64(svptrue_b64(), sum_diff_scharr_y_v)) *
         kLucasKanadeAlgFixedPointDescale;
   }
 };

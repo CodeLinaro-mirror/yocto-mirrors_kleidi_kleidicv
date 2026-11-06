@@ -24,13 +24,13 @@ class StandaloneLucasKanadeAlg {
     // same subpixel position, writing Ix/Iy pairs to `scharr_window` and
     // accumulating Ix^2, Ix*Iy, Iy^2 for the structure tensor used later in
     // the LK solve.
-    sum_scharr_xx = 0;
-    sum_scharr_xy = 0;
-    sum_scharr_yy = 0;
+    int64_t sum_scharr_xx_i = 0;
+    int64_t sum_scharr_xy_i = 0;
+    int64_t sum_scharr_yy_i = 0;
 
-    int32x4_t sum_scharr_xx_v = vdupq_n_s32(0),
-              sum_scharr_xy_v = vdupq_n_s32(0),
-              sum_scharr_yy_v = vdupq_n_s32(0);
+    int64x2_t sum_scharr_xx_v = vdupq_n_s64(0),
+              sum_scharr_xy_v = vdupq_n_s64(0),
+              sum_scharr_yy_v = vdupq_n_s64(0);
 
     const int window_width_times_channels = window_width * channels;
     const int16x4_t leftover_mask =
@@ -99,7 +99,7 @@ class StandaloneLucasKanadeAlg {
             accumulate_scharr_scalar(
                 scharr_window_row, scharr_row0, scharr_row1,
                 static_cast<int>(x), channels, coeff_tl, coeff_tr, coeff_bl,
-                coeff_br, sum_scharr_xx, sum_scharr_xy, sum_scharr_yy);
+                coeff_br, sum_scharr_xx_i, sum_scharr_xy_i, sum_scharr_yy_i);
             store_interpolated_pixel(window_row, prev_row0, prev_row1,
                                      static_cast<int>(x), channels, coeff_tl,
                                      coeff_tr, coeff_bl, coeff_br);
@@ -108,9 +108,12 @@ class StandaloneLucasKanadeAlg {
       });
     }
 
-    sum_scharr_xx += vaddvq_f32(vcvtq_f32_s32(sum_scharr_xx_v));
-    sum_scharr_xy += vaddvq_f32(vcvtq_f32_s32(sum_scharr_xy_v));
-    sum_scharr_yy += vaddvq_f32(vcvtq_f32_s32(sum_scharr_yy_v));
+    sum_scharr_xx =
+        static_cast<float>(sum_scharr_xx_i + vaddvq_s64(sum_scharr_xx_v));
+    sum_scharr_xy =
+        static_cast<float>(sum_scharr_xy_i + vaddvq_s64(sum_scharr_xy_v));
+    sum_scharr_yy =
+        static_cast<float>(sum_scharr_yy_i + vaddvq_s64(sum_scharr_yy_v));
     sum_scharr_xx *= kLucasKanadeAlgFixedPointDescale;
     sum_scharr_xy *= kLucasKanadeAlgFixedPointDescale;
     sum_scharr_yy *= kLucasKanadeAlgFixedPointDescale;
@@ -123,11 +126,11 @@ class StandaloneLucasKanadeAlg {
       int window_corner_y, int window_width, int window_height,
       int16_t coeff_tl, int16_t coeff_tr, int16_t coeff_bl, int16_t coeff_br,
       float &sum_diff_scharr_x, float &sum_diff_scharr_y) {
-    sum_diff_scharr_x = 0;
-    sum_diff_scharr_y = 0;
+    int64_t sum_diff_scharr_x_i = 0;
+    int64_t sum_diff_scharr_y_i = 0;
 
-    int32x4_t sum_diff_scharr_x_v = vdupq_n_s32(0),
-              sum_diff_scharr_y_v = vdupq_n_s32(0);
+    int64x2_t sum_diff_scharr_x_v = vdupq_n_s64(0),
+              sum_diff_scharr_y_v = vdupq_n_s64(0);
 
     const int16x4_t coeff_tl_v = vdup_n_s16(coeff_tl);
     const int16x4_t coeff_tr_v = vdup_n_s16(coeff_tr);
@@ -181,14 +184,16 @@ class StandaloneLucasKanadeAlg {
             accumulate_diff_scharr_scalar(
                 row0, row1, window_row, scharr_window_row, static_cast<int>(x),
                 channels, coeff_tl, coeff_tr, coeff_bl, coeff_br,
-                sum_diff_scharr_x, sum_diff_scharr_y);
+                sum_diff_scharr_x_i, sum_diff_scharr_y_i);
           }
         }
       });
     }
 
-    sum_diff_scharr_x += vaddvq_f32(vcvtq_f32_s32(sum_diff_scharr_x_v));
-    sum_diff_scharr_y += vaddvq_f32(vcvtq_f32_s32(sum_diff_scharr_y_v));
+    sum_diff_scharr_x = static_cast<float>(sum_diff_scharr_x_i +
+                                           vaddvq_s64(sum_diff_scharr_x_v));
+    sum_diff_scharr_y = static_cast<float>(sum_diff_scharr_y_i +
+                                           vaddvq_s64(sum_diff_scharr_y_v));
     sum_diff_scharr_x *= kLucasKanadeAlgFixedPointDescale;
     sum_diff_scharr_y *= kLucasKanadeAlgFixedPointDescale;
   }
@@ -278,9 +283,9 @@ class StandaloneLucasKanadeAlg {
                                        const int16_t *row0, const int16_t *row1,
                                        int x, int channels, int16_t coeff_tl,
                                        int16_t coeff_tr, int16_t coeff_bl,
-                                       int16_t coeff_br, float &sum_scharr_xx,
-                                       float &sum_scharr_xy,
-                                       float &sum_scharr_yy) {
+                                       int16_t coeff_br, int64_t &sum_scharr_xx,
+                                       int64_t &sum_scharr_xy,
+                                       int64_t &sum_scharr_yy) {
     int scharr_x = round_fixed_point<kLucasKanadeAlgFractionBits>(
         row0[x * 2L] * coeff_tl + row0[(x + channels) * 2L] * coeff_tr +
         row1[x * 2L] * coeff_bl + row1[(x + channels) * 2L] * coeff_br);
@@ -292,9 +297,9 @@ class StandaloneLucasKanadeAlg {
     scharr_window_row[x * 2L] = static_cast<int16_t>(scharr_x);
     scharr_window_row[x * 2L + 1] = static_cast<int16_t>(scharr_y);
 
-    sum_scharr_xx += static_cast<float>(scharr_x * scharr_x);
-    sum_scharr_xy += static_cast<float>(scharr_x * scharr_y);
-    sum_scharr_yy += static_cast<float>(scharr_y * scharr_y);
+    sum_scharr_xx += static_cast<int64_t>(scharr_x) * scharr_x;
+    sum_scharr_xy += static_cast<int64_t>(scharr_x) * scharr_y;
+    sum_scharr_yy += static_cast<int64_t>(scharr_y) * scharr_y;
   }
 
   KLEIDICV_FORCE_INLINE
@@ -347,26 +352,32 @@ class StandaloneLucasKanadeAlg {
 
   KLEIDICV_FORCE_INLINE
   static void accumulate_scharr_vectors(int16x4_t scharr_x, int16x4_t scharr_y,
-                                        int32x4_t &sum_scharr_xx_v,
-                                        int32x4_t &sum_scharr_xy_v,
-                                        int32x4_t &sum_scharr_yy_v) {
-    sum_scharr_xx_v = vmlal_s16(sum_scharr_xx_v, scharr_x, scharr_x);
-    sum_scharr_xy_v = vmlal_s16(sum_scharr_xy_v, scharr_x, scharr_y);
-    sum_scharr_yy_v = vmlal_s16(sum_scharr_yy_v, scharr_y, scharr_y);
+                                        int64x2_t &sum_scharr_xx_v,
+                                        int64x2_t &sum_scharr_xy_v,
+                                        int64x2_t &sum_scharr_yy_v) {
+    sum_scharr_xx_v =
+        vpadalq_s32(sum_scharr_xx_v, vmull_s16(scharr_x, scharr_x));
+    sum_scharr_xy_v =
+        vpadalq_s32(sum_scharr_xy_v, vmull_s16(scharr_x, scharr_y));
+    sum_scharr_yy_v =
+        vpadalq_s32(sum_scharr_yy_v, vmull_s16(scharr_y, scharr_y));
   }
 
   KLEIDICV_FORCE_INLINE
   static void accumulate_scharr_vectors(int16x8_t scharr_x, int16x8_t scharr_y,
-                                        int32x4_t &sum_scharr_xx_v,
-                                        int32x4_t &sum_scharr_xy_v,
-                                        int32x4_t &sum_scharr_yy_v) {
+                                        int64x2_t &sum_scharr_xx_v,
+                                        int64x2_t &sum_scharr_xy_v,
+                                        int64x2_t &sum_scharr_yy_v) {
     accumulate_scharr_vectors(vget_low(scharr_x), vget_low(scharr_y),
                               sum_scharr_xx_v, sum_scharr_xy_v,
                               sum_scharr_yy_v);
 
-    sum_scharr_xx_v = vmlal_high_s16(sum_scharr_xx_v, scharr_x, scharr_x);
-    sum_scharr_xy_v = vmlal_high_s16(sum_scharr_xy_v, scharr_x, scharr_y);
-    sum_scharr_yy_v = vmlal_high_s16(sum_scharr_yy_v, scharr_y, scharr_y);
+    sum_scharr_xx_v =
+        vpadalq_s32(sum_scharr_xx_v, vmull_high_s16(scharr_x, scharr_x));
+    sum_scharr_xy_v =
+        vpadalq_s32(sum_scharr_xy_v, vmull_high_s16(scharr_x, scharr_y));
+    sum_scharr_yy_v =
+        vpadalq_s32(sum_scharr_yy_v, vmull_high_s16(scharr_y, scharr_y));
   }
 
   KLEIDICV_FORCE_INLINE
@@ -374,9 +385,9 @@ class StandaloneLucasKanadeAlg {
                                  int16_t *scharr_window_row, int x,
                                  int channels, int16x8_t coeff_tl,
                                  int16x8_t coeff_tr, int16x8_t coeff_bl,
-                                 int16x8_t coeff_br, int32x4_t &sum_scharr_xx_v,
-                                 int32x4_t &sum_scharr_xy_v,
-                                 int32x4_t &sum_scharr_yy_v) {
+                                 int16x8_t coeff_br, int64x2_t &sum_scharr_xx_v,
+                                 int64x2_t &sum_scharr_xy_v,
+                                 int64x2_t &sum_scharr_yy_v) {
     int16x8x2_t scharr_xy =
         compute_scharr8(row0, row1, scharr_window_row, x, channels, coeff_tl,
                         coeff_tr, coeff_bl, coeff_br);
@@ -391,9 +402,9 @@ class StandaloneLucasKanadeAlg {
                                  int16_t *scharr_window_row, int x,
                                  int channels, int16x4_t coeff_tl,
                                  int16x4_t coeff_tr, int16x4_t coeff_bl,
-                                 int16x4_t coeff_br, int32x4_t &sum_scharr_xx_v,
-                                 int32x4_t &sum_scharr_xy_v,
-                                 int32x4_t &sum_scharr_yy_v) {
+                                 int16x4_t coeff_br, int64x2_t &sum_scharr_xx_v,
+                                 int64x2_t &sum_scharr_xy_v,
+                                 int64x2_t &sum_scharr_yy_v) {
     int16x4x2_t scharr_xy =
         compute_scharr4(row0, row1, scharr_window_row, x, channels, coeff_tl,
                         coeff_tr, coeff_bl, coeff_br);
@@ -407,8 +418,8 @@ class StandaloneLucasKanadeAlg {
       const int16_t *row0, const int16_t *row1, int16_t *scharr_window_row,
       int window_width_times_channels, int channels, int16x4_t coeff_tl,
       int16x4_t coeff_tr, int16x4_t coeff_bl, int16x4_t coeff_br,
-      int16x4_t leftover_mask, int32x4_t &sum_scharr_xx_v,
-      int32x4_t &sum_scharr_xy_v, int32x4_t &sum_scharr_yy_v) {
+      int16x4_t leftover_mask, int64x2_t &sum_scharr_xx_v,
+      int64x2_t &sum_scharr_xy_v, int64x2_t &sum_scharr_yy_v) {
     int16x4x2_t scharr_xy = compute_scharr4(
         row0, row1, scharr_window_row, window_width_times_channels - 4,
         channels, coeff_tl, coeff_tr, coeff_bl, coeff_br);
@@ -445,8 +456,8 @@ class StandaloneLucasKanadeAlg {
       const uint8_t *row0, const uint8_t *row1, const int16_t *window_row,
       const int16_t *scharr_window_row, int x, int channels,
       int16x4_t coeff_tl_v, int16x4_t coeff_tr_v, int16x4_t coeff_bl_v,
-      int16x4_t coeff_br_v, int32x4_t &sum_diff_scharr_x_v,
-      int32x4_t &sum_diff_scharr_y_v) {
+      int16x4_t coeff_br_v, int64x2_t &sum_diff_scharr_x_v,
+      int64x2_t &sum_diff_scharr_y_v) {
     int16x4_t diff;
     int16x4_t scharr_x;
     int16x4_t scharr_y;
@@ -454,8 +465,10 @@ class StandaloneLucasKanadeAlg {
                              channels, coeff_tl_v, coeff_tr_v, coeff_bl_v,
                              coeff_br_v, diff, scharr_x, scharr_y);
 
-    sum_diff_scharr_x_v = vmlal_s16(sum_diff_scharr_x_v, scharr_x, diff);
-    sum_diff_scharr_y_v = vmlal_s16(sum_diff_scharr_y_v, scharr_y, diff);
+    sum_diff_scharr_x_v =
+        vpadalq_s32(sum_diff_scharr_x_v, vmull_s16(scharr_x, diff));
+    sum_diff_scharr_y_v =
+        vpadalq_s32(sum_diff_scharr_y_v, vmull_s16(scharr_y, diff));
   }
 
   KLEIDICV_FORCE_INLINE
@@ -464,7 +477,7 @@ class StandaloneLucasKanadeAlg {
       const int16_t *scharr_window_row, int window_width_times_channels,
       int channels, int16x4_t coeff_tl_v, int16x4_t coeff_tr_v,
       int16x4_t coeff_bl_v, int16x4_t coeff_br_v, int32x4_t leftover_mask,
-      int32x4_t &sum_diff_scharr_x_v, int32x4_t &sum_diff_scharr_y_v) {
+      int64x2_t &sum_diff_scharr_x_v, int64x2_t &sum_diff_scharr_y_v) {
     int x = window_width_times_channels - 4;
     int16x4_t diff;
     int16x4_t scharr_x;
@@ -477,8 +490,8 @@ class StandaloneLucasKanadeAlg {
     int32x4_t diff_scharr_y = vmull_s16(scharr_y, diff);
     int32x4_t masked_x = vandq_s32(diff_scharr_x, leftover_mask);
     int32x4_t masked_y = vandq_s32(diff_scharr_y, leftover_mask);
-    sum_diff_scharr_x_v = vaddq_s32(sum_diff_scharr_x_v, masked_x);
-    sum_diff_scharr_y_v = vaddq_s32(sum_diff_scharr_y_v, masked_y);
+    sum_diff_scharr_x_v = vpadalq_s32(sum_diff_scharr_x_v, masked_x);
+    sum_diff_scharr_y_v = vpadalq_s32(sum_diff_scharr_y_v, masked_y);
   }
 
   KLEIDICV_FORCE_INLINE
@@ -486,14 +499,14 @@ class StandaloneLucasKanadeAlg {
       const uint8_t *row0, const uint8_t *row1, const int16_t *window_row,
       const int16_t *scharr_window_row, int x, int channels, int16_t coeff_tl,
       int16_t coeff_tr, int16_t coeff_bl, int16_t coeff_br,
-      float &sum_diff_scharr_x, float &sum_diff_scharr_y) {
+      int64_t &sum_diff_scharr_x, int64_t &sum_diff_scharr_y) {
     int next = round_fixed_point<kLucasKanadeAlgFractionBits - 5>(
         row0[x] * coeff_tl + row0[x + channels] * coeff_tr +
         row1[x] * coeff_bl + row1[x + channels] * coeff_br);
     int diff = next - window_row[x];
-    sum_diff_scharr_x += static_cast<float>(diff * scharr_window_row[x * 2L]);
+    sum_diff_scharr_x += static_cast<int64_t>(diff) * scharr_window_row[x * 2L];
     sum_diff_scharr_y +=
-        static_cast<float>(diff * scharr_window_row[x * 2L + 1]);
+        static_cast<int64_t>(diff) * scharr_window_row[x * 2L + 1];
   }
 
   KLEIDICV_FORCE_INLINE
@@ -501,7 +514,7 @@ class StandaloneLucasKanadeAlg {
       const uint8_t *row0, const uint8_t *row1, const int16_t *window_row,
       const int16_t *scharr_window_row, int x, int channels, int16x8_t coeff_tl,
       int16x8_t coeff_tr, int16x8_t coeff_bl, int16x8_t coeff_br,
-      int32x4_t &sum_diff_scharr_x_v, int32x4_t &sum_diff_scharr_y_v) {
+      int64x2_t &sum_diff_scharr_x_v, int64x2_t &sum_diff_scharr_y_v) {
     uint8x8_t tl = vld1_u8(row0 + x);
     uint8x8_t tr = vld1_u8(row0 + x + channels);
     uint8x8_t bl = vld1_u8(row1 + x);
@@ -522,13 +535,17 @@ class StandaloneLucasKanadeAlg {
     int16x8_t scharr_x = scharr_xy.val[0];
     int16x8_t scharr_y = scharr_xy.val[1];
 
-    sum_diff_scharr_x_v = vmlal_s16(sum_diff_scharr_x_v, vget_low_s16(scharr_x),
-                                    vget_low_s16(diff));
-    sum_diff_scharr_x_v = vmlal_high_s16(sum_diff_scharr_x_v, scharr_x, diff);
+    sum_diff_scharr_x_v =
+        vpadalq_s32(sum_diff_scharr_x_v,
+                    vmull_s16(vget_low_s16(scharr_x), vget_low_s16(diff)));
+    sum_diff_scharr_x_v =
+        vpadalq_s32(sum_diff_scharr_x_v, vmull_high_s16(scharr_x, diff));
 
-    sum_diff_scharr_y_v = vmlal_s16(sum_diff_scharr_y_v, vget_low_s16(scharr_y),
-                                    vget_low_s16(diff));
-    sum_diff_scharr_y_v = vmlal_high_s16(sum_diff_scharr_y_v, scharr_y, diff);
+    sum_diff_scharr_y_v =
+        vpadalq_s32(sum_diff_scharr_y_v,
+                    vmull_s16(vget_low_s16(scharr_y), vget_low_s16(diff)));
+    sum_diff_scharr_y_v =
+        vpadalq_s32(sum_diff_scharr_y_v, vmull_high_s16(scharr_y, diff));
   }
 
   template <int shift>
