@@ -267,6 +267,8 @@ void process_parallel_rows(Rows<const ScalarType> src_rows, size_t src_width,
 
   LoopUnroll2 loop{src_width, VecTraits::num_lanes()};
   loop.unroll_twice([&](size_t index) KLEIDICV_STREAMING {
+    KLEIDICV_PREFETCH(&src_rows.at(0, index)[0] + 1024);
+    KLEIDICV_PREFETCH(&src_rows.at(1, index)[0] + 1024);
     parallel_rows_vectors_path_2x<kChannels>(src_rows.at(0, index),
                                              dst_rows.at(0, index / 2));
   });
