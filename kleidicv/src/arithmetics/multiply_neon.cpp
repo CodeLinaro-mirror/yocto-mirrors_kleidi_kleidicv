@@ -17,8 +17,6 @@ class SaturatingMultiply final : public UnrollTwice {
   using VecTraits = neon::VecTraits<ScalarType>;
   using VectorType = typename VecTraits::VectorType;
 
-  explicit SaturatingMultiply(double scale = 1.0) : scale_{scale} {};
-
   VectorType vector_path(VectorType src_a, VectorType src_b) {
     VectorType result;
 
@@ -33,11 +31,6 @@ class SaturatingMultiply final : public UnrollTwice {
     // narrow-saturate high_part back to int16x4
     // and stitch them back together into int16x8
     result = vqmovn_high(vqmovn(low_part), high_part);
-
-    /* TODO: figure out the way to multiply by double or some
-      fixed supported scale. Note that vmulq_n does not support 8x8 vectors.
-      */
-    // result = vmulq_n(result, this->scale_);
 
     return result;
   }
@@ -58,9 +51,6 @@ class SaturatingMultiply final : public UnrollTwice {
     }
     return result;
   }
-
- private:
-  double scale_;
 };
 
 template <typename T>

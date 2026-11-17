@@ -375,7 +375,7 @@ class FloatConversion : public testing::Test {
   }
 
  private:
-  int original_mode_ = std::fegetround();
+  [[maybe_unused]] int original_mode_ = std::fegetround();
 };
 
 using ElementTypes =

@@ -43,6 +43,7 @@ if [[ $(dpkg --print-architecture) = arm64 ]]; then
     -DWITH_VTK=OFF \
     -DWITH_JASPER=OFF \
     -DWITH_OPENJPEG=OFF \
+    -DWITH_OPENEXR=OFF \
     -DWITH_JPEG=OFF \
     -DWITH_WEBP=OFF \
     -DWITH_TIFF=OFF \

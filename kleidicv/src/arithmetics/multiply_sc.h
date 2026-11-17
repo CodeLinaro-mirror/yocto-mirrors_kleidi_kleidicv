@@ -17,8 +17,6 @@ class SaturatingMultiply final : public UnrollTwice {
   using VecTraits = KLEIDICV_TARGET_NAMESPACE::VecTraits<ScalarType>;
   using VectorType = typename VecTraits::VectorType;
 
-  explicit SaturatingMultiply(double scale = 1.0) : scale_{scale} {};
-
   VectorType vector_path(ContextType ctx, VectorType src_a,
                          VectorType src_b) KLEIDICV_STREAMING {
     VectorType result;
@@ -33,15 +31,8 @@ class SaturatingMultiply final : public UnrollTwice {
     // saturaning-narrow odd-indexed and merge with even-indexed
     result = svqxtnt(narrow_bottom, top_part);
 
-    /* TODO: figure out the way to multiply by double or some
-      fixed supported scale.
-      */
-
     return result;
   }
-
- private:
-  double scale_;
 };
 
 template <typename T>
