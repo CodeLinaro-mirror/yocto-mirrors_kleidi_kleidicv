@@ -11,20 +11,21 @@
 // SPDX-FileCopyrightText: Third party copyrights are property of their respective owners.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 diff --git a/modules/core/perf/perf_arithm.cpp b/modules/core/perf/perf_arithm.cpp
-index d8b65e1a08..d7a1f2e3a9 100644
+index d8b65e1a08..ff8b61de31 100644
 --- a/modules/core/perf/perf_arithm.cpp
 +++ b/modules/core/perf/perf_arithm.cpp
-@@ -525,7 +525,7 @@ PERF_TEST_P_(BinaryOpTest, transposeND_generic_move_tail_order)
+@@ -525,8 +525,8 @@ PERF_TEST_P_(BinaryOpTest, transposeND_generic_move_tail_order)
  
  INSTANTIATE_TEST_CASE_P(/*nothing*/ , BinaryOpTest,
      testing::Combine(
 -        testing::Values(szVGA, sz720p, sz1080p),
+-        testing::Values(CV_8UC1, CV_8UC3, CV_8UC4, CV_8SC1, CV_16SC1, CV_16SC2, CV_16SC3, CV_16SC4, CV_32SC1, CV_32FC1)
 +        testing::Values(szVGA, sz720p, sz1080p, sz2160p),
-         testing::Values(CV_8UC1, CV_8UC3, CV_8UC4, CV_8SC1, CV_16SC1, CV_16SC2, CV_16SC3, CV_16SC4, CV_32SC1, CV_32FC1)
++        testing::Values(CV_8UC1, CV_8UC3, CV_8UC4, CV_8SC1, CV_16UC1, CV_16SC1, CV_16SC2, CV_16SC3, CV_16SC4, CV_32SC1, CV_32FC1)
      )
  );
+ 
 @@ -826,12 +826,35 @@ PERF_TEST_P_(RotateTest, rotate)
  
  INSTANTIATE_TEST_CASE_P(/*nothing*/ , RotateTest,
@@ -124,7 +125,7 @@ index 344d81cb8a..08d1f5ed97 100644
      eps = eps * std::max(1.0, fabs(alpha));
 diff --git a/modules/core/perf/perf_exp.cpp b/modules/core/perf/perf_exp.cpp
 new file mode 100644
-index 0000000000..6b20e19a0c
+index 0000000000..e860839bfe
 --- /dev/null
 +++ b/modules/core/perf/perf_exp.cpp
 @@ -0,0 +1,59 @@
@@ -140,7 +141,7 @@ index 0000000000..6b20e19a0c
 +             testing::Combine
 +             (
 +                 testing::Values(sz1080p, sz2160p),
-+                 testing::Values(CV_32FC4)
++                 testing::Values(CV_32FC1)
 +             )
 +           )
 +{
@@ -163,7 +164,7 @@ index 0000000000..6b20e19a0c
 +             testing::Combine
 +             (
 +                 testing::Values(sz1080p, sz2160p),
-+                 testing::Values(CV_32F)
++                 testing::Values(CV_32FC1)
 +             )
 +           )
 +{
@@ -835,10 +836,10 @@ index bd2129d233..0ce3d9c870 100644
      SANITY_CHECK(dst);
  }
 diff --git a/modules/imgproc/perf/perf_resize.cpp b/modules/imgproc/perf/perf_resize.cpp
-index 0f470a5f81..087d771047 100644
+index 0f470a5f81..7b8dca03f8 100644
 --- a/modules/imgproc/perf/perf_resize.cpp
 +++ b/modules/imgproc/perf/perf_resize.cpp
-@@ -67,7 +67,18 @@ PERF_TEST_P(MatInfo_SizePair, resizeUpLinearNonExact,
+@@ -67,7 +67,27 @@ PERF_TEST_P(MatInfo_SizePair, resizeUpLinearNonExact,
              testing::Combine
                  (
                  testing::Values( MATTYPE_NE_VALUES ),
@@ -853,12 +854,21 @@ index 0f470a5f81..087d771047 100644
 +                    Size_Size_t(szqHD, sz2160p),
 +                    // 8*8
 +                    Size_Size_t(cv::Size(240, 135), sz1080p),
-+                    Size_Size_t(cv::Size(480, 270), sz2160p)
++                    Size_Size_t(cv::Size(480, 270), sz2160p),
++                    // Upsize "big"
++                    Size_Size_t(cv::Size(1200, 675), sz1080p),
++                    Size_Size_t(cv::Size(2400, 1350), sz2160p),
++                    // Upsize "big" for 1 channel
++                    Size_Size_t(cv::Size(1440, 810), sz1080p),
++                    Size_Size_t(cv::Size(2880, 1620), sz2160p),
++                    // Upsize "small"
++                    Size_Size_t(cv::Size(1840, 1035), sz1080p),
++                    Size_Size_t(cv::Size(3680, 2070), sz2160p)
 +                    )
                  )
               )
  {
-@@ -142,7 +153,14 @@ PERF_TEST_P(MatInfo_SizePair, resizeDownLinearNonExact,
+@@ -142,7 +162,14 @@ PERF_TEST_P(MatInfo_SizePair, resizeDownLinearNonExact,
                      Size_Size_t(szqHD, szVGA),
                      Size_Size_t(sz720p, Size(120 * sz720p.width / sz720p.height, 120)),
                      Size_Size_t(sz720p, szVGA),
@@ -874,7 +884,7 @@ index 0f470a5f81..087d771047 100644
                      )
                  )
              )
-@@ -172,8 +190,8 @@ typedef TestBaseWithParam<MatInfo_Size_Scale_t> MatInfo_Size_Scale;
+@@ -172,8 +199,8 @@ typedef TestBaseWithParam<MatInfo_Size_Scale_t> MatInfo_Size_Scale;
  
  PERF_TEST_P(MatInfo_Size_Scale, ResizeAreaFast,
              testing::Combine(
