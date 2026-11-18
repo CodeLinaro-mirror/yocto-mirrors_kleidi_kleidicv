@@ -362,10 +362,10 @@ index 0000000000..7c6a4afaf2
 +
 +} // namespace
 diff --git a/modules/imgproc/perf/perf_blur.cpp b/modules/imgproc/perf/perf_blur.cpp
-index fd649b08c6..6b036ce4f8 100644
+index fd649b08c6..7f9669d058 100644
 --- a/modules/imgproc/perf/perf_blur.cpp
 +++ b/modules/imgproc/perf/perf_blur.cpp
-@@ -10,9 +10,9 @@ typedef perf::TestBaseWithParam<Size_MatType_kSize_t> Size_MatType_kSize;
+@@ -10,15 +10,20 @@ typedef perf::TestBaseWithParam<Size_MatType_kSize_t> Size_MatType_kSize;
  
  PERF_TEST_P(Size_MatType_kSize, medianBlur,
              testing::Combine(
@@ -377,7 +377,18 @@ index fd649b08c6..6b036ce4f8 100644
                  )
              )
  {
-@@ -35,6 +35,8 @@ PERF_TEST_P(Size_MatType_kSize, medianBlur,
+     Size size = get<0>(GetParam());
+     int type = get<1>(GetParam());
+     int ksize = get<2>(GetParam());
++    int depth = CV_MAT_DEPTH(type);
++
++    if (ksize > 5 && depth != CV_8U)
++        throw cvtest::SkipTestException(
++            "medianBlur requires CV_8U for kernel sizes greater than 5");
+ 
+     Mat src(size, type);
+     Mat dst(size, type);
+@@ -35,6 +40,8 @@ PERF_TEST_P(Size_MatType_kSize, medianBlur,
  
  CV_ENUM(BorderType3x3, BORDER_REPLICATE, BORDER_CONSTANT)
  CV_ENUM(BorderType, BORDER_REPLICATE, BORDER_CONSTANT, BORDER_REFLECT, BORDER_REFLECT101)
@@ -386,7 +397,7 @@ index fd649b08c6..6b036ce4f8 100644
  
  typedef tuple<Size, MatType, BorderType3x3> Size_MatType_BorderType3x3_t;
  typedef perf::TestBaseWithParam<Size_MatType_BorderType3x3_t> Size_MatType_BorderType3x3;
-@@ -48,10 +50,42 @@ typedef perf::TestBaseWithParam<Size_ksize_BorderType_t> Size_ksize_BorderType;
+@@ -48,10 +55,42 @@ typedef perf::TestBaseWithParam<Size_ksize_BorderType_t> Size_ksize_BorderType;
  typedef tuple<Size, MatType, BorderType, int> Size_MatType_BorderType_ksize_t;
  typedef perf::TestBaseWithParam<Size_MatType_BorderType_ksize_t> Size_MatType_BorderType_ksize;
  
@@ -430,7 +441,7 @@ index fd649b08c6..6b036ce4f8 100644
                  testing::Values(CV_8UC1, CV_8UC4, CV_16UC1, CV_16SC1, CV_32FC1),
                  BorderType3x3::all()
                  )
-@@ -71,6 +105,28 @@ PERF_TEST_P(Size_MatType_BorderType3x3, gaussianBlur3x3,
+@@ -71,6 +110,28 @@ PERF_TEST_P(Size_MatType_BorderType3x3, gaussianBlur3x3,
      SANITY_CHECK(dst, 1);
  }
  
@@ -459,7 +470,7 @@ index fd649b08c6..6b036ce4f8 100644
  PERF_TEST_P(Size_MatType_BorderType3x3, blur3x3,
              testing::Combine(
                  testing::Values(szODD, szQVGA, szVGA, sz720p),
-@@ -198,7 +254,7 @@ PERF_TEST_P(Size_MatType_BorderType_ksize, box_inplace,
+@@ -198,7 +259,7 @@ PERF_TEST_P(Size_MatType_BorderType_ksize, box_inplace,
  
  PERF_TEST_P(Size_MatType_BorderType, gaussianBlur5x5,
              testing::Combine(
@@ -468,7 +479,7 @@ index fd649b08c6..6b036ce4f8 100644
                  testing::Values(CV_8UC1, CV_8UC4, CV_16UC1, CV_16SC1, CV_32FC1),
                  BorderType::all()
                  )
-@@ -218,6 +274,204 @@ PERF_TEST_P(Size_MatType_BorderType, gaussianBlur5x5,
+@@ -218,6 +279,204 @@ PERF_TEST_P(Size_MatType_BorderType, gaussianBlur5x5,
      SANITY_CHECK(dst, 1);
  }
  
@@ -896,7 +907,7 @@ index 0f470a5f81..7b8dca03f8 100644
                  )
              )
 diff --git a/modules/imgproc/perf/perf_sepfilters.cpp b/modules/imgproc/perf/perf_sepfilters.cpp
-index 480aab9f20..d33a29d5ed 100644
+index 480aab9f20..e91d9af4c2 100644
 --- a/modules/imgproc/perf/perf_sepfilters.cpp
 +++ b/modules/imgproc/perf/perf_sepfilters.cpp
 @@ -5,7 +5,7 @@
@@ -908,7 +919,7 @@ index 480aab9f20..d33a29d5ed 100644
  
  CV_ENUM(BorderType3x3, BORDER_REPLICATE, BORDER_CONSTANT)
  CV_ENUM(BorderType3x3ROI, BORDER_DEFAULT, BORDER_REPLICATE|BORDER_ISOLATED, BORDER_CONSTANT|BORDER_ISOLATED)
-@@ -242,4 +242,32 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3ROI, scharrViaSobelFilter,
+@@ -242,4 +242,33 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3ROI, scharrViaSobelFilter,
      SANITY_CHECK(dst);
  }
  
@@ -926,13 +937,14 @@ index 480aab9f20..d33a29d5ed 100644
 +{
 +    const Size srcSize = get<0>(GetParam());
 +    const int type = get<1>(GetParam()), ksize = get<2>(GetParam()), borderMode = get<3>(GetParam());
++    const int kernel_type = CV_MAT_DEPTH(type);
 +
 +    Mat src(srcSize, type), dst(srcSize, type);
 +    declare.in(src, WARMUP_RNG).out(dst);
 +
-+    Mat kernelX(1, ksize, type);
++    Mat kernelX(1, ksize, kernel_type);
 +    randu(kernelX, -3.0, 3.0);
-+    Mat kernelY(1, ksize, type);
++    Mat kernelY(1, ksize, kernel_type);
 +    randu(kernelY, -3.0, 3.0);
 +
 +    TEST_CYCLE() cv::sepFilter2D(src, dst, -1, kernelX, kernelY, cv::Point(-1, -1), 0.0f, borderMode);
